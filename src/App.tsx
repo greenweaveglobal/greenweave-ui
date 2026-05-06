@@ -1,0 +1,1285 @@
+import { useState, useCallback, useMemo, useReducer, memo, createContext, useContext } from "react";
+
+// ─── FONTS ────────────────────────────────────────────────────
+(() => {
+  const l = document.createElement("link");
+  l.rel = "stylesheet";
+  l.href = "https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&family=Cormorant+Garamond:ital,wght@0,600;1,400&display=swap";
+  document.head.appendChild(l);
+})();
+
+const DF = "'Cormorant Garamond',Georgia,serif";
+const SF = (lang) => lang === "ja" ? "'Noto Sans JP',sans-serif" : "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+// ─── DESIGN TOKENS ────────────────────────────────────────────
+const C = {
+  bg:      "#050505",
+  leaf:    "#d4af37",
+  mist:    "#e0e0e0",
+  dew:     "#ffffff",
+  amber:   "#b8962f",
+  sky:     "#8c6d1f",
+  red:     "#f43f5e",
+  violet:  "#a68a32",
+  usdg:    "#10b981",
+  line:    "rgba(255,255,255,0.08)",
+  ghost:   "#0a0a0a",
+  glow:    "rgba(212,175,55,0.08)",
+  gold:    "#d4af37",
+  clay:    "#8c6d1f",
+};
+
+// ─── STORE ────────────────────────────────────────────────────
+const Ctx = createContext(null);
+
+const INIT = {
+  lang: "en",
+  wallet: null,
+  // Posts with moderation state
+  posts: [
+    { id:"p1", author:"Minh · Sai Gon", tier:"thread", time:"1h ago",
+      content:"Basil on my 12th floor balcony. Every morning watering it makes the day feel worthwhile 🌿",
+      tags:["balcony","saigon","herbs"], likes:34, img:"🌿",
+      reports:0, burned:false, storage:"nostr", txHash:"Ar7x..." },
+    { id:"p2", author:"Lan · Ha Noi", tier:"garden", time:"3h ago",
+      content:"📍 West Lake Garden node: 0.5ha ready. Planting medicinal herbs. Open for stays from next month!",
+      tags:["hanoi","node","stays"], likes:67, img:"🏡", node:"West Lake Garden",
+      reports:0, burned:false, storage:"nostr", txHash:"Ar8y..." },
+    { id:"p3", author:"Hoa · Binh Phuoc", tier:"thread", time:"1d ago",
+      content:"Apricot tree — bricks + floor dust + leftover Tet soil. Don't stop it from living 🌱",
+      tags:["binhphuoc","apricot","fukuoka"], likes:128, img:"🌸",
+      reports:0, burned:false, storage:"rgb", txHash:"Sh3z..." },
+    { id:"p4", author:"James · Tokyo", tier:"thread", time:"2d ago",
+      content:"Desk ficus, 3 years. Survived 2 office moves. Slow growth is still growth 🌳",
+      tags:["tokyo","deskplant"], likes:89, img:"🌳",
+      reports:0, burned:false, storage:"ipfs", txHash:"Qm5k..." },
+  ],
+  likedPosts:   {},
+  reportedPosts:{},  // { postId: true } — user already reported
+  mintedNFTs:   [],
+  // Marketplace listings
+  listings: [
+    { id:"l1", nftId:"thread_042", name:"Cherry Blossom Bonsai", owner:"Sakura · Kyoto",
+      price:0.5, currency:"SOL", votes:89, rank:1, img:"🌸", tier:"thread",
+      story:"10 year old bonsai, trained by hand every season" },
+    { id:"l2", nftId:"garden_007", name:"West Lake Herb Garden", owner:"Lan · Ha Noi",
+      price:2.1, currency:"SOL", votes:67, rank:2, img:"🏡", tier:"garden",
+      story:"0.5ha organic garden, 30+ medicinal herbs, open for stays" },
+    { id:"l3", nftId:"thread_188", name:"Desert Rose Survivor", owner:"Omar · Dubai",
+      price:0.3, currency:"SOL", votes:54, rank:3, img:"🌹", tier:"thread",
+      story:"Survived 50°C summers on a rooftop. Pure resilience." },
+  ],
+  // Garden stays
+  stays: [
+    { id:"s1", nodeId:"n2", name:"West Lake Garden Stay",
+      city:"Ha Noi", owner:"Lan", rating:4.9, reviews:12,
+      price:35, currency:"USDG",
+      perks:["Organic breakfast","Herb walking tour","Morning meditation"],
+      available:true, img:"🏡" },
+    { id:"s2", nodeId:"n3", name:"Binh Phuoc Forest Cabin",
+      city:"Binh Phuoc", owner:"Hoa", rating:5.0, reviews:3,
+      price:25, currency:"USDG",
+      perks:["Off-grid experience","Forest trekking","Fukuoka farming intro"],
+      available:true, img:"🌲" },
+  ],
+  // DAO proposals — content moderation
+  moderationQueue: [
+    { id:"m1", postId:"p_spam", postPreview:"[SPAM] Buy crypto now!!!",
+      reporter:"Community", reportReason:"spam",
+      yesVotes:18, noVotes:2, total:60, threshold:0.6,
+      status:"voting", deadline: Date.now() + 86400000 },
+  ],
+  // USDG balances and carbon
+  usdgBalance: 0,
+  carbonCredits: 0,       // tons CO2
+  carbonReserve: 142.5,   // protocol total tons backing USDG
+  usdgSupply: 142500,     // total USDG minted (1 USDG = 0.001 ton = $1)
+  nodes: [
+    { id:"n1", name:"West Lake Garden",   owner:"Lan",  city:"Ha Noi",     ha:0.5, status:"active",   members:12, carbonPerYear:2.5, stayEnabled:true  },
+    { id:"n2", name:"Binh Thanh Rooftop", owner:"Tuan", city:"Sai Gon",    ha:0.1, status:"active",   members:8,  carbonPerYear:0.4, stayEnabled:false },
+    { id:"n3", name:"Binh Phuoc Forest",  owner:"Hoa",  city:"Binh Phuoc", ha:5,   status:"building", members:3,  carbonPerYear:12,  stayEnabled:true  },
+    { id:"n4", name:"Osaka Bamboo Grove", owner:"Yuki", city:"Osaka",      ha:0.05,status:"active",   members:5,  carbonPerYear:0.8, stayEnabled:false },
+  ],
+};
+
+function reducer(s, a) {
+  switch(a.type) {
+    case "SET_LANG":      return {...s, lang:a.payload};
+    case "CONNECT":       return {...s, wallet:a.payload};
+    case "DISCONNECT":    return {...s, wallet:null};
+    case "LIKE":          return s.likedPosts[a.id] ? s : {
+      ...s, likedPosts:{...s.likedPosts,[a.id]:true},
+      posts:s.posts.map(p=>p.id===a.id?{...p,likes:p.likes+1}:p)
+    };
+    case "REPORT_POST":   return s.reportedPosts[a.id] ? s : {
+      ...s, reportedPosts:{...s.reportedPosts,[a.id]:true},
+      posts:s.posts.map(p=>p.id===a.id?{...p,reports:p.reports+1}:p),
+      moderationQueue:[{
+        id:`m${Date.now()}`, postId:a.id,
+        postPreview:a.preview?.substring(0,60)+"...",
+        reporter:"You", reportReason:a.reason,
+        yesVotes:1, noVotes:0, total:60, threshold:0.6,
+        status:"voting", deadline:Date.now()+86400000
+      },...s.moderationQueue]
+    };
+    case "BURN_POST":     return {
+      ...s, posts:s.posts.map(p=>p.id===a.id?{...p,burned:true}:p),
+      moderationQueue:s.moderationQueue.map(m=>m.postId===a.id?{...m,status:"burned"}:m)
+    };
+    case "VOTE_MODERATION": {
+      const queue = s.moderationQueue.map(m => {
+        if(m.id!==a.id) return m;
+        const updated = {...m, [a.choice==="yes"?"yesVotes":"noVotes"]: m[a.choice==="yes"?"yesVotes":"noVotes"]+1};
+        const ratio = updated.yesVotes/(updated.yesVotes+updated.noVotes);
+        if(ratio >= updated.threshold) return {...updated, status:"passed"};
+        return updated;
+      });
+      const passed = queue.find(m=>m.id===a.id&&m.status==="passed");
+      return {
+        ...s, moderationQueue:queue,
+        posts:passed ? s.posts.map(p=>p.id===passed.postId?{...p,burned:true}:p) : s.posts
+      };
+    }
+    case "ADD_POST":      return {...s, posts:[a.payload,...s.posts]};
+    case "MINT":          return {...s, mintedNFTs:[...s.mintedNFTs,a.payload]};
+    case "MINT_USDG":     return {
+      ...s,
+      wallet: s.wallet ? { ...s.wallet, usdg: s.wallet.usdg + a.amount, carbon: s.wallet.carbon - a.carbon } : null
+    };
+    case "BOOK_STAY":     return {
+      ...s,
+      wallet: s.wallet ? { ...s.wallet, usdg: s.wallet.usdg - a.price } : null
+    };
+    case "EARN_USDG":     return {
+      ...s,
+      wallet: s.wallet ? { ...s.wallet, usdg: s.wallet.usdg + a.amount, carbon: s.wallet.carbon + a.carbon } : null
+    };
+    default: return s;
+  }
+}
+
+function Store({children}) {
+  const [state, dispatch] = useReducer(reducer, INIT);
+  return <Ctx.Provider value={{state,dispatch}}>{children}</Ctx.Provider>;
+}
+const useStore = () => useContext(Ctx);
+
+// ─── ATOMS ────────────────────────────────────────────────────
+const Pill = memo(({color, children, sm}) => (
+  <span className={`inline-flex items-center rounded-sm border ${sm?"px-1.5 py-0.5 text-[8px]":"px-2 py-0.5 text-[9px]"}`}
+    style={{color, background:color+"10", borderColor:color+"20", textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:500}}>{children}</span>
+));
+
+const Card = memo(({children, className="", style={}}) => (
+  <div className={`rounded-sm border p-5 ${className}`}
+    style={{background:C.ghost, borderColor:C.line, ...style}}>{children}</div>
+));
+
+const Btn = memo(({children, onClick, color=C.leaf, full, disabled, sm, danger}) => (
+  <button onClick={disabled?undefined:onClick}
+    className={`${full?"w-full":""} ${sm?"px-3 py-1.5 text-[9px]":"px-6 py-3 text-[11px]"} rounded-sm font-bold tracking-widest uppercase transition-colors`}
+    style={{
+      background: danger?"rgba(244,63,94,0.1)":disabled?"rgba(255,255,255,0.02)":color,
+      color: danger?C.red:disabled?"rgba(255,255,255,0.3)":"#000",
+      border: danger?`1px solid rgba(244,63,94,0.3)`:disabled?"1px solid rgba(255,255,255,0.05)":"1px solid transparent",
+      fontFamily:"inherit", cursor:disabled?"default":"pointer",
+    }}>{children}</button>
+));
+
+const StorageBadge = memo(({type}) => {
+  const map = {
+    nostr:{c:C.violet,l:"Nostr ⚡"},
+    ipfs:   {c:C.sky,l:"IPFS"},
+    rgb: {c:C.leaf,l:"RGB State"},
+  };
+  const m = map[type]||map.ipfs;
+  return <Pill color={m.c} sm>⛓ {m.l}</Pill>;
+});
+
+const LangSwitcher = memo(() => {
+  const {state,dispatch} = useStore();
+  return (
+    <div className="flex gap-1">
+      {["vi","en","ja"].map(l=>(
+        <button key={l} onClick={()=>dispatch({type:"SET_LANG",payload:l})}
+          className="px-2 py-0.5 rounded-full text-[9px] border cursor-pointer"
+          style={{background:state.lang===l?"rgba(212,175,55,0.18)":"transparent",
+            borderColor:state.lang===l?"rgba(212,175,55,0.45)":"rgba(255,255,255,0.1)",
+            color:state.lang===l?C.dew:"#8c8c8c",fontFamily:"inherit"}}>
+          {{"vi":"🇻🇳","en":"🌍","ja":"🇯🇵"}[l]}
+        </button>
+      ))}
+    </div>
+  );
+});
+
+// ─── CONNECT GATE ─────────────────────────────────────────────
+const ConnectGate = memo(({onConnect}) => {
+  const {state} = useStore();
+  const font = SF(state.lang);
+  
+  const [step, setStep] = useState(1);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  
+  const [pubkey, setPubkey] = useState("");
+  const [npub, setNpub] = useState("");
+  const [nodeName, setNodeName] = useState("");
+  const [storagePref, setStoragePref] = useState("nostr");
+
+  const taglines = {
+    vi:["Mỗi cái cây,","một sợi chỉ xanh.","Cùng nhau, chúng ta dệt lại Trái Đất."],
+    en:["Every tree,","one green thread.","Together, we weave the Earth back."],
+    ja:["1本の木、","1本の緑の糸。","共に、地球を織り直す。"],
+  }[state.lang];
+
+  const connectNostr = async (forceDemo = false) => {
+    setError("");
+    setLoading(true);
+    
+    if (forceDemo || typeof window.nostr === 'undefined') {
+      if (!forceDemo) {
+        setError("No Nostr extension found. Please install a signer like Alby or nos2x.");
+        setLoading(false);
+        return;
+      }
+      
+      // Mock for preview environment
+      setTimeout(() => {
+        const mockPk = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+        setPubkey(mockPk);
+        setNpub(`npub1${mockPk.slice(0, 6)}...${mockPk.slice(-4)}`);
+        setStep(2);
+        setLoading(false);
+      }, 800);
+      return;
+    }
+
+    try {
+      const pk = await window.nostr.getPublicKey();
+      setPubkey(pk);
+      setNpub(`npub1${pk.slice(0, 6)}...${pk.slice(-4)}`);
+      setStep(2);
+    } catch (err) {
+      setError("Connection rejected or failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signCovenant = async (forceDemo = false) => {
+    setError("");
+    setLoading(true);
+    
+    if (forceDemo || typeof window.nostr === 'undefined') {
+       setTimeout(() => {
+         setStep(4);
+         setLoading(false);
+       }, 1200);
+       return;
+    }
+
+    try {
+      const event = {
+        kind: 1,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [["node", nodeName], ["storage", storagePref]],
+        content: `I accept the Genesis Covenant.
+Node: ${nodeName}`
+      };
+      await window.nostr.signEvent(event);
+      setStep(4);
+    } catch (err) {
+      setError("Signing failed or rejected.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEnter = () => {
+    onConnect({
+      address: npub || "demo",
+      usdg: 50,
+      carbon: 0.05,
+      name: nodeName || "Guest Node",
+      storagePref: storagePref || "nostr"
+    });
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+      style={{background:"#050505",fontFamily:font}}>
+      <style>{`
+        @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+        @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+        .u1{animation:up .6s ease both} .u2{animation:up .6s .1s ease both}
+        .u3{animation:up .6s .2s ease both} .u4{animation:up .6s .3s ease both}
+      `}</style>
+      
+      <div className="w-full max-w-sm">
+        {/* Header / Logo */}
+        <div className="u1 mb-10">
+          <div className="mb-5" style={{fontSize:48,color:C.leaf,animation:"breathe 5s ease-in-out infinite"}}>⧫</div>
+          <p style={{fontFamily:DF,fontSize:"clamp(24px,5vw,32px)",color:C.leaf,letterSpacing:4,lineHeight:1,fontStyle:"italic"}}>
+            GREEN WEAVE
+          </p>
+          <p className="text-[9px] uppercase tracking-[4px] mt-3" style={{color:C.mist}}>
+            The Rooting Flow
+          </p>
+        </div>
+
+        {/* STEP 1: Seed Drop */}
+        {step === 1 && (
+          <div className="u2 flex flex-col gap-4">
+            <p style={{fontFamily:DF,fontSize:18,color:C.dew}}>{taglines[0]} {taglines[1]}</p>
+            <p className="text-[10px] uppercase tracking-widest mb-4" style={{color:"#8c8c8c"}}>{taglines[2]}</p>
+            
+            <Btn onClick={() => connectNostr(false)} full>
+              {loading ? "Discovering..." : "Connect Identity (NIP-07)"}
+            </Btn>
+            <button onClick={() => connectNostr(true)}
+              className="py-3 rounded-sm text-[9px] uppercase tracking-widest transition-colors border mt-1"
+              style={{background:"transparent",borderColor:C.line,color:"#595959",fontFamily:"inherit",cursor:"pointer"}}>
+              Simulate Connection (Demo)
+            </button>
+            {error && <p className="text-[10px] mt-2 p-2 rounded-sm" style={{color:C.bg, background:C.red}}>{error}</p>}
+          </div>
+        )}
+
+        {/* STEP 2: Soil Configuration */}
+        {step === 2 && (
+          <div className="u2 flex flex-col gap-5 text-left">
+            <div className="p-4 border rounded-sm" style={{borderColor:C.line, background:"#0a0a0a"}}>
+               <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{color:C.leaf}}>Connected Seed (Pubkey)</p>
+               <p className="text-sm font-mono" style={{color:C.dew}}>{npub}</p>
+            </div>
+            
+            <div className="flex flex-col gap-2.5">
+              <label className="text-[10px] uppercase tracking-widest px-1" style={{color:C.mist}}>Node Name</label>
+              <input type="text" value={nodeName} onChange={e=>setNodeName(e.target.value)} placeholder="e.g. Saigon Garden"
+                className="w-full p-3.5 bg-transparent border outline-none rounded-sm text-sm" 
+                style={{borderColor:C.line, color:C.dew, fontFamily:"inherit"}} />
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              <label className="text-[10px] uppercase tracking-widest px-1" style={{color:C.mist}}>Storage Preference</label>
+              <select value={storagePref} onChange={e=>setStoragePref(e.target.value)}
+                className="w-full p-3.5 bg-[#050505] border outline-none rounded-sm text-sm" 
+                style={{borderColor:C.line, color:C.dew, fontFamily:"inherit"}}>
+                <option value="nostr">Nostr Relays (Ephemeral/Social)</option>
+                <option value="rgb">RGB State (Bitcoin L2/L3)</option>
+                <option value="ipfs">IPFS (Decentralized File Storage)</option>
+              </select>
+            </div>
+
+            <div className="mt-4">
+              <Btn onClick={() => setStep(3)} full disabled={!nodeName.trim()}>Continue to Covenant</Btn>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Genesis Covenant */}
+        {step === 3 && (
+          <div className="u2 flex flex-col gap-5 text-left">
+            <p className="text-[10px] uppercase tracking-widest text-center" style={{color:C.mist}}>The Genesis Covenant</p>
+            
+            <div className="p-5 border rounded-sm overflow-y-auto text-xs leading-relaxed" 
+              style={{borderColor:C.line, background:"#0a0a0a", maxHeight: 180, color:"#a6a6a6"}}>
+              <p className="mb-3">I, node operator of <strong style={{color:C.dew}}>{nodeName}</strong>, hereby pledge to participate in the Green Weave Global network.</p>
+              <p className="mb-3">1. I acknowledge that ecological value is the foundation of this consensus.</p>
+              <p className="mb-3">2. I shall not submit false Biomass data, nor exploit the Proof of Nature mechanism.</p>
+              <p>3. I understand that my USDG minting helps fuel real-world reforestation efforts.</p>
+            </div>
+
+            <Btn onClick={() => signCovenant(!window.nostr)} full color={C.leaf}>
+              {loading ? "Signing..." : "Sign Covenant & Take Root"}
+            </Btn>
+            {error && <p className="text-[10px] mt-2 text-center" style={{color:C.red}}>{error}</p>}
+          </div>
+        )}
+
+        {/* STEP 4: Germination */}
+        {step === 4 && (
+          <div className="u2 flex flex-col items-center gap-6 mt-4">
+            <div className="w-16 h-16 rounded-sm border flex items-center justify-center" style={{borderColor:C.leaf, background:"rgba(212,175,55,0.08)"}}>
+               <span style={{fontSize:28, color:C.leaf}}>⧫</span>
+            </div>
+            
+            <div className="mb-4">
+              <p style={{fontFamily:DF, fontSize:22, color:C.dew, marginBottom:12, letterSpacing:2}}>Germination Complete</p>
+              <p className="text-xs leading-relaxed" style={{color:"#8c8c8c"}}>
+                Your Node <strong style={{color:C.dew}}>{nodeName}</strong> has successfully taken root in the network.
+              </p>
+            </div>
+
+            <Btn onClick={handleEnter} full>Enter Dashboard</Btn>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+});
+
+// ─── FEED with MODERATION ─────────────────────────────────────
+const FeedTab = memo(() => {
+  const {state,dispatch} = useStore();
+  const font = SF(state.lang);
+  const [compose,setCompose]=useState(false);
+  const [content,setContent]=useState("");
+  const [storage,setStorage]=useState(state.wallet?.storagePref || "nostr");
+  const [reportMenu,setReportMenu]=useState(null);
+
+  const [imageSrc, setImageSrc] = useState(null);
+  const [audioSrc, setAudioSrc] = useState(null);
+  const [mediaLoading, setMediaLoading] = useState(false);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageSrc(URL.createObjectURL(file));
+      setCompose(true);
+    }
+  };
+
+  const handleAudioUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAudioSrc(URL.createObjectURL(file));
+      setCompose(true);
+    }
+  };
+
+  const doPost = useCallback(()=>{
+    if(!content.trim() && !imageSrc && !audioSrc) return;
+    setMediaLoading(true);
+
+    setTimeout(() => {
+      dispatch({type:"ADD_POST",payload:{
+        id:`p${Date.now()}`,
+        author:`${state.wallet?.name || "Guest Node"} · ${(state.wallet?.address||"").slice(0,8)||"..."}`,
+        tier:"thread", time:"just now",
+        content, tags:[], likes:0, reports:0, burned:false,
+        img:"🌱", storage,
+        imageStr: imageSrc,
+        audioStr: audioSrc,
+        txHash: storage==="nostr"?"npub"+Math.random().toString(36).slice(2,10):
+                 storage==="rgb"?"rgb:"+Math.random().toString(36).slice(2,10):
+                 "Qm"+Math.random().toString(36).slice(2,10),
+      }});
+      setContent("");
+      setImageSrc(null);
+      setAudioSrc(null);
+      setMediaLoading(false);
+      setCompose(false);
+    }, 1500);
+  },[content, storage, imageSrc, audioSrc, state.wallet, dispatch]);
+
+  const doReport = useCallback((post,reason)=>{
+    dispatch({type:"REPORT_POST",id:post.id,preview:post.content,reason});
+    setReportMenu(null);
+  },[dispatch]);
+
+  const doLike = useCallback(id=>dispatch({type:"LIKE",id}),[dispatch]);
+
+  const REPORT_REASONS = ["spam","offensive","misinformation","off-topic"];
+  const STORAGE_OPTIONS = [
+    {id:"nostr",label:"Nostr",icon:"⚡",desc:"Relay network · free"},
+    {id:"ipfs",   label:"IPFS",   icon:"⬡",desc:"Distributed · free"},
+    {id:"rgb", label:"RGB", icon:"🟢",desc:"Bitcoin native · L2/L3"},
+  ];
+
+  return (
+    <div style={{fontFamily:font}}>
+      {/* Compose */}
+      <Card className="mb-4" style={{borderColor:`${C.leaf}28`}}>
+        <textarea value={content} onChange={e=>setContent(e.target.value)} disabled={mediaLoading}
+          placeholder="Update your node's status... What does this nature mean to you?"
+          rows={3} className="w-full p-2.5 rounded-sm text-xs outline-none resize-none mb-3"
+          style={{background:"rgba(255,255,255,0.05)",border:`1px solid ${C.leaf}20`,color:C.dew,fontFamily:"inherit"}}/>
+        
+        {/* MEDIA PREVIEWS */}
+        {imageSrc && (
+          <div className="relative mb-3 inline-block w-full">
+            <img src={imageSrc} style={{maxHeight: "300px", width: "100%", objectFit: "cover", borderRadius: "4px"}} />
+            {!mediaLoading && <button className="absolute top-2 right-2 bg-black bg-opacity-70 text-white rounded-sm w-7 h-7 flex items-center justify-center text-xs cursor-pointer border-none" onClick={() => setImageSrc(null)}>✕</button>}
+          </div>
+        )}
+        {audioSrc && (
+            <div className="relative mb-3 flex items-center gap-3 bg-[#0a0a0a] border rounded-sm p-3 w-full" style={{borderColor:C.line}}>
+              <span style={{fontSize: 20}}>🎤</span>
+              <audio controls src={audioSrc} className="flex-1 h-8" style={{outline: "none"}} />
+              {!mediaLoading && <button className="text-[10px] uppercase tracking-widest font-semibold p-1 cursor-pointer bg-transparent border-none" style={{color:C.red}} onClick={() => setAudioSrc(null)}>✕</button>}
+            </div>
+        )}
+
+        {/* MEDIA TOOLBAR */}
+        <div className="flex gap-5 mb-4 border-b pb-4" style={{borderColor:C.line}}>
+          <button disabled={mediaLoading} className="flex items-center gap-2 text-[10px] uppercase tracking-widest cursor-pointer" style={{color:C.leaf, background:"none", border:"none", opacity:mediaLoading?0.5:1}} onClick={() => document.getElementById("img-upload").click()}>
+            <span style={{fontSize: 16}}>📸</span> Attach Image
+          </button>
+          <input id="img-upload" type="file" accept="image/*" style={{display:"none"}} onChange={handleImageUpload} />
+          
+          <button disabled={mediaLoading} className="flex items-center gap-2 text-[10px] uppercase tracking-widest cursor-pointer" style={{color:C.sky, background:"none", border:"none", opacity:mediaLoading?0.5:1}} onClick={() => document.getElementById("audio-upload").click()}>
+            <span style={{fontSize: 16}}>🎤</span> Attach Audio
+          </button>
+          <input id="audio-upload" type="file" accept="audio/*" style={{display:"none"}} onChange={handleAudioUpload} />
+        </div>
+
+        {/* Storage selector & Post */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] uppercase tracking-[2px]" style={{color:C.leaf}}>
+              ⛓ Store on: {STORAGE_OPTIONS.find(s=>s.id===storage)?.label}
+            </p>
+          </div>
+          <Btn onClick={doPost} full disabled={(!content.trim() && !imageSrc && !audioSrc) || mediaLoading}>
+              {mediaLoading ? "Broadcasting..." : `Publish to ${STORAGE_OPTIONS.find(s=>s.id===storage)?.label || "Network"}`}
+          </Btn>
+        </div>
+      </Card>
+
+      {/* Posts */}
+      <div className="flex flex-col gap-3">
+      {state.posts.filter(p=>!p.burned).map(p=>(
+        <Card key={p.id} className="relative"
+          style={{opacity:p.reports>=3?"0.6":1}}>
+          {p.reports>=3&&(
+            <div className="absolute inset-0 rounded-sm flex items-center justify-center"
+              style={{background:"rgba(0,0,0,0.5)",zIndex:2}}>
+              <p className="text-xs" style={{color:C.red}}>⚠ Under community review ({p.reports} reports)</p>
+            </div>
+          )}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-sm flex items-center justify-center text-base border"
+              style={{background:`${C.leaf}10`,borderColor:`${C.leaf}22`}}>{p.img}</div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold" style={{color:C.dew}}>{p.author}</p>
+              <p className="text-[9px]" style={{color:"#8c8c8c"}}>{p.time}</p>
+            </div>
+            <div className="flex gap-1 items-center">
+              <StorageBadge type={p.storage||"ipfs"}/>
+              <button onClick={()=>setReportMenu(reportMenu===p.id?null:p.id)}
+                className="w-6 h-6 rounded-sm flex items-center justify-center text-sm cursor-pointer border"
+                style={{background:"transparent",borderColor:"rgba(255,255,255,0.06)",color:"#595959"}}>
+                ⋮
+              </button>
+            </div>
+          </div>
+
+          {reportMenu===p.id&&(
+            <div className="absolute right-3 top-10 rounded-sm border p-2 z-10 w-44"
+              style={{background:"#0d100d",borderColor:`${C.red}30`}}>
+              <p className="text-[9px] uppercase tracking-widest px-2 pb-1 mb-1 border-b"
+                style={{color:C.red,borderColor:`${C.red}20`}}>Report Post</p>
+              {REPORT_REASONS.map(r=>(
+                <button key={r} onClick={()=>doReport(p,r)}
+                  className="w-full text-left py-1.5 px-2 rounded-sm text-xs cursor-pointer"
+                  style={{background:"transparent",border:"none",color:"#e0e0e0",fontFamily:"inherit"}}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <p className="text-xs leading-relaxed mb-3" style={{color:"#e0e0e0", whiteSpace:"pre-wrap"}}>{p.content}</p>
+          {p.imageStr && (
+             <img src={p.imageStr} className="w-full rounded-sm mb-3 border" style={{borderColor:C.line, objectFit:"cover", maxHeight:"300px"}} />
+          )}
+          {p.audioStr && (
+             <audio controls src={p.audioStr} className="w-full h-8 mb-3" style={{borderRadius:"4px", outline:"none"}} />
+          )}
+
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            {p.tags?.map((t,i)=><span key={i} className="text-[9px]" style={{color:"#595959"}}>#{t}</span>)}
+          </div>
+          
+          <div className="flex items-center justify-between pt-2 border-t" style={{borderColor:"rgba(255,255,255,0.06)"}}>
+            <button onClick={()=>doLike(p.id)}
+              style={{color:state.likedPosts[p.id]?C.red:"#8c8c8c",
+                background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",
+                fontSize:12,display:"flex",alignItems:"center",gap:4}}>
+              {state.likedPosts[p.id]?"❤️":"🤍"} <span className="text-[10px]">{p.likes}</span>
+            </button>
+            <div className="flex gap-4">
+              <button style={{color:"#8c8c8c",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>💬</button>
+              <button style={{color:"#8c8c8c",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>↗</button>
+            </div>
+          </div>
+        </Card>
+      ))}
+      </div>
+    </div>
+  );
+});
+
+
+// ─── MARKET TAB ───────────────────────────────────────────────
+const MarketTab = memo(() => {
+  const {state,dispatch} = useStore();
+  const font = SF(state.lang);
+  const [view,setView] = useState("stays"); // stays or harvest
+  const [showCreate, setShowCreate] = useState(false);
+
+  // Mock harvests if not in state, or just filter existing listings
+  const harvests = useMemo(() => [
+    { id:"h1", img:"🍅", name:"Organic Heirloom Tomatoes", host:"Saigon Balcony Node", price:5, rating:4.8, reviews:24, desc:"Sun-ripened, no pesticides. Picked same day." },
+    { id:"h2", img:"🍯", name:"Wild Forest Honey", host:"Binh Phuoc Forest Node", price:15, rating:5.0, reviews:8, desc:"Raw honey from old-growth forest blossoms." },
+    { id:"h3", img:"🥬", name:"Aquaponic Kale", host:"D7 Urban Garden", price:3, rating:4.7, reviews:15, desc:"Crunchy green kale, nutrient dense." },
+  ], []);
+
+  const stays = state.stays;
+
+  const [msgStatus, setMsgStatus] = useState("");
+
+  const handleMessage = (host) => {
+    // NIP-44 Mock
+    setMsgStatus(`Initializing secure NIP-44 channel with ${host}...`);
+    setTimeout(() => setMsgStatus(""), 4000);
+    console.log(`Initializing NIP-44 Encrypted Channel with ${host}`);
+  };
+
+  const usdgToSats = (usdg) => Math.round(usdg * 2400); // Mock exchange rate
+
+  return (
+    <div style={{fontFamily:font}}>
+      {/* Header & Tabs */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex gap-4">
+          <button onClick={()=>setView("stays")} 
+            className="pb-2 bg-transparent border-none cursor-pointer text-xs font-semibold uppercase tracking-widest transition-all"
+            style={{
+              color:view==="stays"?C.leaf:"#595959",
+              borderBottom:view==="stays"?`2px solid ${C.leaf}`:"2px solid transparent",
+              fontWeight:view==="stays"?"700":"500"
+            }}>Eco-Stays</button>
+          <button onClick={()=>setView("harvest")} 
+            className="pb-2 bg-transparent border-none cursor-pointer text-xs font-semibold uppercase tracking-widest transition-all"
+            style={{
+              color:view==="harvest"?C.leaf:"#595959",
+              borderBottom:view==="harvest"?`2px solid ${C.leaf}`:"2px solid transparent",
+              fontWeight:view==="harvest"?"700":"500"
+            }}>Harvest</button>
+        </div>
+        <button onClick={() => setShowCreate(true)} 
+          className="px-4 py-2 rounded-sm text-[10px] uppercase tracking-widest font-bold border transition-colors"
+          style={{borderColor:C.leaf, color:C.leaf, background:"transparent"}}>
+          + Create Listing
+        </button>
+      </div>
+
+      {msgStatus && (
+        <div className="mb-4 p-3 rounded-sm border text-[10px] uppercase tracking-widest text-center animate-pulse"
+          style={{borderColor:C.usdg, background:`${C.usdg}10`, color:C.usdg}}>
+          {msgStatus}
+        </div>
+      )}
+
+      {showCreate && (
+        <Card className="mb-6 p-6 border-dashed" style={{borderColor:C.leaf}}>
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-[10px] uppercase tracking-widest font-bold" style={{color:C.leaf}}>New Market Listing</p>
+            <button onClick={()=>setShowCreate(false)} className="text-xs" style={{color:"#8c8c8c"}}>Cancel</button>
+          </div>
+          <p className="text-xs italic" style={{color:"#8c8c8c"}}>Node status: Verification required for host status. Contact DAO board for vetting.</p>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {view === "stays" ? stays.map(s => (
+          <Card key={s.id} className="overflow-hidden flex flex-col group" style={{padding:0, borderColor:C.line}}>
+             <div className="h-32 w-full flex items-center justify-center text-4xl" style={{background:C.ghost}}>
+               {s.img}
+             </div>
+             <div className="p-4 flex-1 flex flex-col">
+               <div className="flex justify-between items-start mb-1">
+                 <p className="text-sm font-semibold" style={{color:C.dew}}>{s.name}</p>
+                 <div className="flex items-center gap-1">
+                   <span style={{color:C.leaf, fontSize:10}}>★</span>
+                   <span className="text-[10px]" style={{color:C.mist}}>{s.rating}</span>
+                 </div>
+               </div>
+               <p className="text-[9px] uppercase tracking-widest mb-3" style={{color:"#595959"}}>{s.city} · Host: {s.owner}</p>
+               
+               <div className="flex flex-col gap-1 mb-4 flex-1">
+                 {s.perks.slice(0,2).map(p => (
+                   <p key={p} className="text-[10px]" style={{color:"#8c8c8c"}}>• {p}</p>
+                 ))}
+               </div>
+
+               <div className="border-t pt-3 mt-auto" style={{borderColor:C.line}}>
+                 <div className="flex justify-between items-end mb-3">
+                   <div>
+                     <p className="text-[8px] uppercase tracking-widest mb-0.5" style={{color:"#595959"}}>Price per night</p>
+                     <p className="text-sm font-bold" style={{color:C.usdg}}>{s.price} <span className="text-[9px]">USDG</span></p>
+                     <p className="text-[8px] font-mono" style={{color:C.amber}}>{usdgToSats(s.price)} SATS</p>
+                   </div>
+                   <button onClick={() => handleMessage(s.owner)}
+                     className="px-3 py-2 rounded-sm border flex items-center gap-2 text-[10px] uppercase tracking-widest font-semibold cursor-pointer transition-colors hover:bg-opacity-10"
+                     style={{borderColor:C.line, background:C.ghost, color:C.dew}}>
+                     <span>🔒</span> Encrypted Message
+                   </button>
+                 </div>
+               </div>
+             </div>
+          </Card>
+        )) : harvests.map(h => (
+          <Card key={h.id} className="overflow-hidden flex flex-col" style={{padding:0, borderColor:C.line}}>
+             <div className="h-32 w-full flex items-center justify-center text-4xl" style={{background:C.ghost}}>
+               {h.img}
+             </div>
+             <div className="p-4 flex-1 flex flex-col">
+               <div className="flex justify-between items-start mb-1">
+                 <p className="text-sm font-semibold" style={{color:C.dew}}>{h.name}</p>
+                 <div className="flex items-center gap-1">
+                   <span style={{color:C.leaf, fontSize:10}}>★</span>
+                   <span className="text-[10px]" style={{color:C.mist}}>{h.rating}</span>
+                 </div>
+               </div>
+               <p className="text-[9px] uppercase tracking-widest mb-2" style={{color:"#595959"}}>{h.host}</p>
+               <p className="text-[10px] leading-relaxed mb-4" style={{color:"#8c8c8c"}}>{h.desc}</p>
+
+               <div className="border-t pt-3 mt-auto" style={{borderColor:C.line}}>
+                 <div className="flex justify-between items-end mb-3">
+                    <div>
+                      <p className="text-[8px] uppercase tracking-widest mb-0.5" style={{color:"#595959"}}>Price</p>
+                      <p className="text-sm font-bold" style={{color:C.usdg}}>{h.price} <span className="text-[9px]">USDG</span></p>
+                      <p className="text-[8px] font-mono" style={{color:C.amber}}>{usdgToSats(h.price)} SATS</p>
+                    </div>
+                    <button onClick={() => handleMessage(h.host)}
+                      className="px-3 py-2 rounded-sm border flex items-center gap-2 text-[10px] uppercase tracking-widest font-semibold cursor-pointer"
+                      style={{borderColor:C.line, background:C.ghost, color:C.dew}}>
+                      <span>🔒</span> Message
+                    </button>
+                 </div>
+               </div>
+             </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="mt-8 pt-8 border-t text-center" style={{borderColor:C.line}}>
+        <p className="text-[8px] uppercase tracking-[3px]" style={{color:C.clay}}>
+          Web of Trust: 128 active nodes verifying peer-to-peer commerce.
+        </p>
+      </div>
+    </div>
+  );
+});
+
+// ─── DAO MODERATION ───────────────────────────────────────────
+const DAOTab = memo(() => {
+  const {state,dispatch} = useStore();
+  const font = SF(state.lang);
+  
+  // Mock Vetting Proposals
+  const [proposals, setProposals] = useState([
+    { id: "v1", node: "Dalat Pine Forest", status: "pending", vouches: 14, required: 21, staked: 10, daysActive: 45, bio: "Organic pine honey provider and eco-retreat space." },
+    { id: "v2", node: "Hoi An Herb Garden", status: "pending", vouches: 8, required: 21, staked: 10, daysActive: 12, bio: "Urban medicinal herb garden in ancient town." },
+  ]);
+
+  const [voted, setVoted] = useState({});
+
+  const handleVouch = (id) => {
+    if (voted[id]) return;
+    setVoted(v => ({...v, [id]: "vouched"}));
+    setProposals(prev => prev.map(p => p.id === id ? { ...p, vouches: p.vouches + 1 } : p));
+  };
+
+  const handleReject = (id) => {
+    if (voted[id]) return;
+    setVoted(v => ({...v, [id]: "rejected"}));
+  };
+
+  const treasuryBalance = "5,240 USDG";
+  const btcBalance = "0.12 BTC";
+  const verifiedHosts = 21;
+
+  return (
+    <div style={{fontFamily:font}}>
+      {/* Treasury Header */}
+      <Card className="mb-4 overflow-hidden relative" style={{background:"#0d110d", borderColor:C.leaf}}>
+        <div className="absolute top-0 right-0 p-4 opacity-10" style={{fontSize: 80}}></div>
+        <p className="text-[10px] uppercase tracking-[3px] mb-6" style={{color:C.mist}}>Star Apple Treasury</p>
+        <div className="flex gap-8 mb-4">
+          <div>
+            <p style={{fontFamily:DF, fontSize:22, color:C.dew}}>{treasuryBalance}</p>
+            <p className="text-[9px] uppercase tracking-widest" style={{color:C.leaf}}>USDG Liquidity</p>
+          </div>
+          <div>
+            <p style={{fontFamily:DF, fontSize:22, color:C.dew}}>{btcBalance}</p>
+            <p className="text-[9px] uppercase tracking-widest" style={{color:C.amber}}>Bitcoin Reserve</p>
+          </div>
+        </div>
+        <div className="pt-4 border-t" style={{borderColor: "rgba(255,255,255,0.05)"}}>
+           <p className="text-[10px]" style={{color:C.mist}}>Verified Hosts in Network: <span style={{color:C.dew, fontWeight: "bold"}}>{verifiedHosts}</span></p>
+        </div>
+      </Card>
+
+      {/* Application Hook */}
+      <Card className="mb-6 border-dashed" style={{borderColor:C.line, background: "transparent"}}>
+        <div className="flex flex-col items-center text-center py-2">
+          <p className="text-xs mb-3" style={{color:C.dew}}>Ready to offer Eco-Stays or Harvests?</p>
+          <p className="text-[10px] mb-5 leading-relaxed" style={{color:"#595959"}}>
+            Your Feed is your resume. Becoming a Host requires at least 21 days<br/>
+            of Proof of Nature on the Feed + a stake of 10 USDG.
+          </p>
+          <Btn onClick={() => alert("Checking eligibility... Redirecting to application flow.")} sm>
+             Submit Host Proposal
+          </Btn>
+        </div>
+      </Card>
+
+      {/* Vetting Proposals */}
+      <p className="text-[9px] tracking-[4px] uppercase mb-4" style={{color:C.leaf}}>
+        Active Vetting Proposals
+      </p>
+
+      <div className="flex flex-col gap-3">
+        {proposals.map(p => {
+          const progress = (p.vouches / p.required) * 100;
+          const isVoted = voted[p.id];
+
+          return (
+            <Card key={p.id} className="relative" style={{borderColor:C.line}}>
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                   <p className="text-xs font-bold" style={{color:C.dew}}>{p.node}</p>
+                   <button className="text-[9px] uppercase tracking-widest mt-1 hover:underline p-0 bg-transparent border-none outline-none" style={{color:C.leaf, cursor: "pointer"}}>View Feed History ↗</button>
+                </div>
+                <div className="text-right">
+                   <p className="text-[9px] uppercase tracking-widest" style={{color:"#595959"}}>Staked</p>
+                   <p className="text-xs font-mono" style={{color:C.usdg}}>{p.staked} USDG</p>
+                </div>
+              </div>
+
+              <p className="text-[10px] leading-relaxed mb-4" style={{color:"#8c8c8c"}}>"{p.bio}"</p>
+
+              <div className="mb-4">
+                <div className="flex justify-between text-[9px] mb-1.5 uppercase tracking-widest">
+                  <span style={{color:C.mist}}>Vetting Progress</span>
+                  <span style={{color:C.dew}}>{p.vouches} / {p.required} Vouches</span>
+                </div>
+                <div className="h-1 rounded-full overflow-hidden" style={{background:C.ghost}}>
+                   <div className="h-full transition-all duration-700" style={{width: `${progress}%`, background: C.leaf}} />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  disabled={!!isVoted}
+                  onClick={() => handleVouch(p.id)}
+                  className="flex-1 py-2 rounded-sm border text-[10px] uppercase tracking-widest font-bold transition-all disabled:opacity-50"
+                  style={{
+                    borderColor: isVoted === "vouched" ? C.leaf : C.line, 
+                    background: isVoted === "vouched" ? `${C.leaf}20` : "transparent",
+                    color: isVoted === "vouched" ? C.leaf : C.dew,
+                    cursor: !!isVoted ? "default" : "pointer"
+                  }}
+                >
+                  {isVoted === "vouched" ? "✓ Vouched" : "👍 Vouch (Sign Event)"}
+                </button>
+                {!isVoted ? (
+                  <button 
+                    onClick={() => handleReject(p.id)}
+                    className="px-4 py-2 rounded-sm border text-[10px] uppercase tracking-widest font-bold transition-all"
+                    style={{borderColor: C.red, background: "transparent", color: C.red, cursor: "pointer"}}
+                  >
+                    👎 Reject
+                  </button>
+                ) : isVoted === "rejected" && (
+                   <div className="flex-1 py-2 rounded-sm border text-[10px] uppercase tracking-widest font-bold text-center"
+                     style={{borderColor: C.red, background: `${C.red}10`, color: C.red}}>
+                     Rejected
+                   </div>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="mt-8 pt-8 border-t text-center" style={{borderColor:C.line}}>
+        <p className="text-[8px] uppercase tracking-[3px] leading-relaxed" style={{color:C.clay}}>
+          The Green Weave DAO is a Council of Elders.<br/>
+          Decisions are signed with NIP-01 Identity Events.
+        </p>
+      </div>
+    </div>
+  );
+});
+
+const USDGTab = memo(() => {
+  const {state,dispatch} = useStore();
+  const font = SF(state.lang);
+  
+  const [amount, setAmount] = useState("");
+  const [step, setStep] = useState(0); 
+  const [merkle, setMerkle] = useState("");
+  const [mimosa, setMimosa] = useState({state:"", fee:0});
+
+  const collateral = Number(amount) || 0;
+  const treasury = (collateral * 0.02).toFixed(2);
+
+  const startEngine = () => {
+    if(!collateral || collateral <= 0) return;
+    setStep(1);
+    setTimeout(() => {
+      setMerkle("nostr:merkleroot" + Math.random().toString(36).slice(2, 10));
+      const isExpanding = Math.random() > 0.3;
+      setMimosa({
+        state: isExpanding ? "Expanding (Leaves Open)" : "Contracting (Leaves Closed)",
+        fee: isExpanding ? 850 : 3400
+      });
+      setStep(2);
+    }, 1800);
+  };
+
+  const crystallize = () => {
+    if (step !== 2) return;
+    setStep(3);
+    setTimeout(() => {
+      dispatch({type:"MINT_USDG", amount:collateral, carbon:collateral/1000});
+      setStep(4);
+    }, 2500);
+  };
+
+  const reset = () => {
+    setStep(0); setAmount(""); setMerkle("");
+  };
+
+  return (
+    <div style={{fontFamily:font}}>
+      <Card className="mb-6" style={{background:"#0a0a0a", borderColor:C.line, padding:"32px 24px"}}>
+        <p style={{fontFamily:DF,fontSize:22,color:C.dew,letterSpacing:4,lineHeight:1,marginBottom:28}} className="text-center font-style:italic">
+          USDG MINTING ENGINE
+        </p>
+
+        {step === 0 && (
+          <div className="flex flex-col gap-6 u1">
+            <div className="text-center border-b pb-6" style={{borderColor:C.line}}>
+              <p className="text-[10px] tracking-widest uppercase mb-1.5" style={{color:C.mist}}>Phase 1: The Influx</p>
+              <p className="text-[10px] leading-relaxed" style={{color:"#8c8c8c"}}>Deposit equivalent USDT or Fiat to initiate the Proof of Nature cycle.</p>
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-widest mb-2 px-1" style={{color:C.usdg}}>Desired USDG Amount</p>
+              <div className="flex items-center border rounded-sm" style={{borderColor:C.line, background:"#050505"}}>
+                <input value={amount} onChange={e=>setAmount(e.target.value)} type="number" placeholder="0.00"
+                  className="flex-1 p-3.5 text-sm bg-transparent outline-none" style={{color:C.dew,fontFamily:"inherit"}}/>
+                <div className="px-4 text-[10px] uppercase tracking-widest font-bold" style={{color:"#8c8c8c"}}>USDG</div>
+              </div>
+              <p className="text-[9px] mt-2.5 text-right px-1" style={{color:"#8c8c8c"}}>Collateral Required: <span style={{color:C.dew}}>{collateral.toFixed(2)} USDT</span></p>
+            </div>
+            <Btn onClick={startEngine} full disabled={!collateral}>Initialize Verification</Btn>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div className="flex flex-col items-center py-12 u1 text-center">
+            <span style={{fontSize:32, color:C.leaf, marginBottom:20, animation:"breathe 2s ease-in-out infinite"}}>⧫</span>
+            <p className="text-[10px] tracking-widest uppercase mb-2" style={{color:C.mist}}>Phase 2: Biomass Verification</p>
+            <p className="text-[10px]" style={{color:"#8c8c8c"}}>Scanning decentralized ledgers for ecological proof...</p>
+          </div>
+        )}
+
+        {step >= 2 && step <= 3 && (
+          <div className="flex flex-col gap-6 u1">
+            <div className="border border-dashed p-5 rounded-sm" style={{borderColor:C.line, background:"rgba(255,255,255,0.02)"}}>
+              <p className="text-[9px] tracking-widest uppercase mb-2" style={{color:C.mist}}>Proof of Nature Hash</p>
+              <p className="text-xs font-mono break-all" style={{color:C.usdg}}>{merkle}</p>
+              <p className="text-[8px] mt-1.5 uppercase" style={{color:"#8c8c8c"}}>Verified via IPFS/Nostr network</p>
+            </div>
+            
+            <div className="border border-solid p-5 rounded-sm" style={{borderColor:C.line, background:"#050505"}}>
+              <p className="text-[9px] tracking-widest uppercase mb-4 text-center" style={{color:C.amber}}>The Mimosa Mechanism</p>
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-[10px]" style={{color:"#8c8c8c"}}>Ecosystem State</p>
+                <p className="text-[10px]" style={{color:C.dew}}>{mimosa.state}</p>
+              </div>
+              <div className="flex justify-between items-center">
+                <p className="text-[10px]" style={{color:"#8c8c8c"}}>Dynamic Sats Fee</p>
+                <p className="text-[10px] font-mono" style={{color:C.amber}}>{mimosa.fee} SATS</p>
+              </div>
+            </div>
+
+            <div className="text-center py-2">
+               <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{color:C.mist}}>Treasury Allocation</p>
+               <p className="text-[10px]" style={{color:"#8c8c8c"}}><span style={{color:C.usdg}}>{treasury} USDG</span> (2%) routed to Green Weave DAO</p>
+            </div>
+
+            {step === 2 && (
+              <Btn onClick={crystallize} full color={C.usdg}>Crystallize & Mint</Btn>
+            )}
+            
+            {step === 3 && (
+              <div className="text-center mt-2 py-2">
+                <p className="text-[10px] tracking-widest uppercase" style={{color:C.mist, animation:"breathe 1.5s ease-in-out infinite"}}>Anchoring to Bitcoin RGB...</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="flex flex-col items-center py-8 u1 text-center">
+            <div className="w-14 h-14 rounded-sm border flex items-center justify-center mb-5" style={{borderColor:C.usdg}}>
+              <span style={{fontSize:24, color:C.usdg}}>✓</span>
+            </div>
+            <p className="text-[12px] tracking-widest uppercase mb-2" style={{color:C.dew}}>Covenant Sealed</p>
+            <p className="text-[10px] mb-8" style={{color:"#8c8c8c"}}>Successfully minted <span style={{color:C.usdg}}>{collateral} USDG</span>.</p>
+            
+            <div className="w-full border-t pt-5 mb-5" style={{borderColor:C.line}}>
+               <div className="flex justify-between mb-2"><span className="text-[9px]" style={{color:"#8c8c8c"}}>RGB Contract Updates</span><span className="text-[9px] font-mono" style={{color:C.leaf}}>Confirmed</span></div>
+               <div className="flex justify-between"><span className="text-[9px]" style={{color:"#8c8c8c"}}>DAO Treasury Funded</span><span className="text-[9px] font-mono" style={{color:C.usdg}}>{treasury} USDG</span></div>
+            </div>
+
+            <Btn onClick={reset} full color={C.dew}>Return</Btn>
+          </div>
+        )}
+
+        <div className="mt-8 pt-6 border-t text-center" style={{borderColor:C.line}}>
+          <p className="text-[8px] uppercase tracking-widest" style={{color:"rgba(255,255,255,0.3)"}}>
+            Node 008: Dynamic equilibrium is the heartbeat that allows the ecosystem to self-adjust.
+          </p>
+        </div>
+      </Card>
+      
+      {/* Balances below the engine */}
+      {state.wallet&&(
+        <div className="flex gap-3">
+          <div className="flex-1 border rounded-sm p-5 text-center" style={{borderColor:C.line, background:C.ghost}}>
+            <p className="text-[9px] tracking-widest uppercase mb-1.5" style={{color:C.mist}}>Your USDG</p>
+            <p style={{fontFamily:DF,fontSize:24,color:C.usdg}}>{state.wallet.usdg||0}</p>
+          </div>
+          <div className="flex-1 border rounded-sm p-5 text-center" style={{borderColor:C.line, background:C.ghost}}>
+            <p className="text-[9px] tracking-widest uppercase mb-1.5" style={{color:C.mist}}>Est. Impact</p>
+            <p style={{fontFamily:DF,fontSize:24,color:C.leaf}}>{(state.wallet.usdg/1000).toFixed(3)}t <span className="text-[10px]">CO₂</span></p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+// ─── STORAGE INFO ─────────────────────────────────────────────
+const StorageInfo = memo(() => {
+  const font = SF("en");
+  return (
+    <div style={{fontFamily:font}}>
+      <Card className="mb-4" style={{background:"linear-gradient(to bottom right, rgba(166,138,50,0.08), transparent)",borderColor:`${C.violet}25`}}>
+        <p style={{fontFamily:DF,fontSize:16,color:C.dew,marginBottom:4}}>
+          ⛓ Decentralized Storage
+        </p>
+        <p className="text-xs leading-relaxed" style={{color:"#7a7a9a"}}>
+          Green Weave stores all content on decentralized networks.
+          No single point of failure. No censorship. Permanent records.
+        </p>
+      </Card>
+      {[
+        {icon:"⚡", name:"Nostr Relays", color:C.violet,
+          use:"Feed posts, chat, ephemeral data",
+          how:"Censorship-resistant global communication protocol. Decentralized relay servers.",
+          link:"nostr.com"},
+        {icon:"⬡", name:"IPFS + Pinata", color:C.sky,
+          use:"Post content, node metadata, survey data",
+          how:"Content-addressed storage. Data is identified by hash, not location. Pinata ensures persistence.",
+          link:"ipfs.tech"},
+        {icon:"🟢", name:"RGB State", color:C.leaf,
+          use:"Asset ownership, smart contracts",
+          how:"Client-side validation on Bitcoin. Scalable, private smart contracts with off-chain state.",
+          link:"rgb.tech"},
+        {icon:"₿", name:"Bitcoin On-chain", color:C.amber,
+          use:"Anchoring, final settlement",
+          how:"Critical state commitments anchored directly to the Bitcoin blockchain. Secure and immutable.",
+          link:"bitcoin.org"},
+      ].map(s=>(
+        <Card key={s.name} className="mb-3" style={{borderColor:`${s.color}25`}}>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center text-xl border"
+              style={{background:`${s.color}12`,borderColor:`${s.color}30`,fontFamily:"monospace"}}>{s.icon}</div>
+            <div>
+              <p className="text-sm font-semibold" style={{color:s.color}}>{s.name}</p>
+              <p className="text-[9px]" style={{color:"#8c8c8c"}}>{s.link}</p>
+            </div>
+          </div>
+          <p className="text-[9px] mb-1" style={{color:s.color}}>Used for: {s.use}</p>
+          <p className="text-[10px] leading-relaxed" style={{color:"#8c8c8c"}}>{s.how}</p>
+        </Card>
+      ))}
+    </div>
+  );
+});
+
+// ─── PROFILE / WALLET ─────────────────────────────────────────
+const ProfileTab = memo(({onDisconnect}) => {
+  const {state} = useStore();
+  const font = SF(state.lang);
+  if(!state.wallet) return (
+    <div className="text-center py-16" style={{color:"#595959",fontFamily:font}}>
+      <p style={{fontSize:40,marginBottom:12}}>🌿</p>
+      <p className="text-sm">Connect wallet to view profile</p>
+    </div>
+  );
+  const usdg = state.wallet?.usdg||0;
+  return (
+    <div style={{fontFamily:font}}>
+      <Card className="mb-3" style={{background:"linear-gradient(to bottom right, rgba(212,175,55,0.08), transparent)",borderColor:`${C.leaf}22`}}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-sm flex items-center justify-center text-2xl border"
+            style={{background:`${C.leaf}12`,borderColor:`${C.leaf}30`}}>🌿</div>
+          <div>
+            <p style={{fontFamily:DF,fontSize:16,color:"#ffffff"}}>Green Weave Member</p>
+            <p className="text-[9px] font-mono mt-0.5" style={{color:"#8c8c8c"}}>{state.wallet.address}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-1.5">
+          {[
+            {v:state.mintedNFTs.length, l:"NFTs",   c:C.leaf},
+            {v:usdg,                   l:"USDG",   c:C.usdg},
+            {v:state.wallet?.carbon||0,l:"CO₂ t",  c:C.sky},
+            {v:"Bitcoin",               l:"Chain",  c:C.amber},
+          ].map((s,i)=>(
+            <div key={i} className="text-center rounded-sm py-2"
+              style={{background:`${s.c}08`}}>
+              <p className="text-sm font-semibold" style={{color:s.c}}>{s.v}</p>
+              <p className="text-[8px]" style={{color:"#8c8c8c"}}>{s.l}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {state.mintedNFTs.length>0&&(
+        <div className="mb-3">
+          <p className="text-[9px] tracking-[3px] uppercase mb-2.5" style={{color:C.leaf}}>Your NFTs</p>
+          {state.mintedNFTs.map((n,i)=>(
+            <Card key={i} className="mb-2 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span style={{fontSize:20}}>{n.tier==="thread"?"🌱":"🏡"}</span>
+                <div>
+                  <p className="text-xs font-semibold" style={{color:"#e0e0e0"}}>{n.name}</p>
+                  <p className="text-[9px]" style={{color:"#8c8c8c"}}>{n.date}</p>
+                </div>
+              </div>
+              <Pill color={n.tier==="thread"?C.leaf:C.amber}>
+                {n.tier==="thread"?"One Thread":"One Garden"}
+              </Pill>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Card style={{borderColor:`${C.leaf}18`,background:`${C.leaf}03`}}>
+        <p className="text-[9px] tracking-[3px] uppercase mb-3" style={{color:C.leaf}}>
+          Roadmap · Bitcoin & RGB
+        </p>
+        {[
+          {step:"Now",           desc:"Green Weave · Bitcoin RGB · Global community · USDG", done:true},
+          {step:"1,000+ members",desc:"Garden Nodes · Carbon credits · Leaderboard rewards"},
+          {step:"When ready",    desc:"Full integration with Elysia Wealth"},
+        ].map((r,i)=>(
+          <div key={i} className="flex gap-3 mb-3">
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 border"
+              style={{background:r.done?`${C.leaf}18`:"transparent",
+                borderColor:r.done?C.leaf:"rgba(255,255,255,0.1)",
+                color:r.done?C.leaf:"#595959"}}>
+              {r.done?"✓":"○"}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold" style={{color:r.done?C.dew:"#8c8c8c"}}>{r.step}</p>
+              <p className="text-[9px]" style={{color:r.done?"#a6a6a6":"#595959"}}>{r.desc}</p>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      <button onClick={onDisconnect}
+        className="w-full mt-3 py-2.5 rounded-sm text-xs border cursor-pointer"
+        style={{background:"transparent",borderColor:"rgba(255,255,255,0.07)",color:"#595959",fontFamily:"inherit"}}>
+        Disconnect wallet
+      </button>
+    </div>
+  );
+});
+
+// ─── APP SHELL ────────────────────────────────────────────────
+const TABS = [
+  {id:"feed",    icon:"🌿", label:"Feed"},
+  {id:"market",  icon:"🏪", label:"Market"},
+  {id:"dao",     icon:"🛡", label:"DAO"},
+  {id:"usdg",    icon:"💚", label:"USDG"},
+  {id:"storage", icon:"⛓", label:"Storage"},
+  {id:"me",      icon:"👤", label:"Me"},
+];
+
+function AppShell() {
+  const {state,dispatch} = useStore();
+  const font = SF(state.lang);
+  const [tab,setTab] = useState("feed");
+  const [connected,setConnected] = useState(false);
+
+  const connect    = useCallback(w=>{dispatch({type:"CONNECT",payload:w});setConnected(true);},[dispatch]);
+  const disconnect = useCallback(()=>{dispatch({type:"DISCONNECT"});setConnected(false);setTab("feed");},[dispatch]);
+
+  const content = useMemo(()=>({
+    feed:    <FeedTab/>,
+    market:  <MarketTab/>,
+    dao:     <DAOTab/>,
+    usdg:    <USDGTab/>,
+    storage: <StorageInfo/>,
+    me:      <ProfileTab onDisconnect={disconnect}/>,
+  }),[disconnect]);
+
+  if(!connected) return <ConnectGate onConnect={connect}/>;
+
+  return (
+    <div className="min-h-screen" style={{background:C.bg,color:C.dew,fontFamily:font}}>
+      {/* Header */}
+      <div className="sticky top-0 z-50 border-b px-6 flex flex-col justify-end h-20"
+        style={{background:"rgba(5,5,5,0.97)",backdropFilter:"blur(14px)",borderColor:C.line}}>
+        <div className="max-w-3xl w-full mx-auto flex items-center justify-between pb-4">
+          <div className="flex items-center gap-4">
+            <span style={{fontSize:20, color:C.leaf}}>⧫</span>
+            <div className="flex items-center gap-3">
+              <p style={{fontFamily:DF,fontSize:18,color:C.leaf,letterSpacing:3,lineHeight:1,fontStyle:"italic"}}>GREEN WEAVE</p>
+              <div className="h-4 w-[1px] bg-white/10 hidden sm:block"></div>
+              <p className="text-[10px] uppercase tracking-[2px] opacity-40 hidden sm:block">greenweave.org</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {state.wallet&&(
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm border"
+                style={{borderColor:C.line,background:C.ghost}}>
+                <span className="text-[10px] font-mono" style={{color:C.usdg}}>
+                  {state.wallet.usdg||0} 
+                </span>
+                <span className="text-[9px] uppercase tracking-widest opacity-60">USDG</span>
+              </div>
+            )}
+            <LangSwitcher/>
+          </div>
+        </div>
+      </div>
+      
+      {/* Tabs / Sub-header */}
+      <div className="border-b" style={{borderColor:C.line, background:C.ghost}}>
+        <div className="max-w-3xl w-full mx-auto px-6 flex overflow-x-auto gap-8">
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              className="flex-shrink-0 flex items-center gap-2 py-4 uppercase tracking-[0.2em] transition-all"
+              style={{background:"none",cursor:"pointer",fontFamily:"inherit",
+                borderBottom: tab===t.id ? `1px solid ${C.leaf}` : "1px solid transparent",
+                color:tab===t.id?C.dew:"rgba(255,255,255,0.4)",fontSize:10,fontWeight:500,borderTop:"none",borderLeft:"none",borderRight:"none"}}>
+              <span>{t.icon}</span> <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-6 py-8 pb-12">
+        {content[tab]}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return <Store><AppShell/></Store>;
+}
