@@ -502,10 +502,12 @@ const ExplorerTab = memo(() => {
 });
 
 // ─── NOSTR CONNECT MODAL ──────────────────────────────────────
-const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLoginRemote, loading, error}) => {
+const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLoginRemote, onLoginReadOnly, onSaveNwc, loading, error}) => {
   const [pk, setPk] = useState("");
   const [bunker, setBunker] = useState("");
-  const [mode, setMode] = useState("select"); // select, pk, remote
+  const [pubkey, setPubkey] = useState("");
+  const [nwcUri, setNwcUri] = useState("");
+  const [mode, setMode] = useState("select"); // select, pk, remote, readonly, nwc
 
   if (!isOpen) return null;
 
@@ -514,36 +516,78 @@ const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLog
       <div className="w-full max-w-sm border-2 bg-[#050505] p-8 relative" style={{borderColor:C.line}}>
         <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100">×</button>
         
-        <h2 style={{fontFamily:DF, fontSize:24, color:C.leaf, marginBottom:24, letterSpacing:2}}>CONNECT NOSTR</h2>
+        <h2 style={{fontFamily:DF, fontSize:24, color:C.leaf, marginBottom:24, letterSpacing:2}}>CONNECT WALLET</h2>
 
         {mode === "select" && (
-          <div className="space-y-4">
+          <div className="space-y-3">
+            <button onClick={() => setMode("nwc")} 
+              className="w-full py-5 border-2 border-green-500 flex flex-col items-center gap-2 bg-green-500/10 hover:bg-green-500/20 transition-all font-black group"
+              style={{boxShadow: '0 0 30px rgba(34,197,94,0.15)'}}>
+              <span className="text-3xl">⚡️</span>
+              <span className="text-[12px] uppercase tracking-[3px]" style={{color:C.leaf}}>MOBILE CONNECT (ZEUS)</span>
+              <span className="text-[8px] uppercase tracking-widest opacity-60">1-Click Zaps Enabled</span>
+            </button>
             <button onClick={onLoginNip07} 
-              className="w-full py-4 border-2 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors"
+              className="w-full py-4 border-2 flex flex-col items-center gap-2 hover:bg-white/5 transition-all group"
               style={{borderColor:C.line}}>
-              <span className="text-2xl">🧩</span>
-              <span className="text-[10px] uppercase tracking-widest font-bold">Extension (NIP-07)</span>
+              <span className="text-2xl grayscale group-hover:grayscale-0">🧩</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold">Desktop Extension (NIP-07)</span>
             </button>
-            <button onClick={() => setMode("remote")} 
-              className="w-full py-4 border border-white/10 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors">
-              <span className="text-2xl">☁️</span>
-              <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">Nostr Connect (NIP-46)</span>
-            </button>
-            <button onClick={() => setMode("pk")} 
-              className="w-full py-4 border border-white/10 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors">
-              <span className="text-2xl">🔑</span>
-              <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">Private Key (Testing)</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setMode("remote")} 
+                className="py-3 border flex flex-col items-center gap-1 hover:bg-white/5 transition-colors opacity-60"
+                style={{borderColor:C.line}}>
+                <span className="text-lg">☁️</span>
+                <span className="text-[8px] uppercase tracking-widest font-bold">Bunker</span>
+              </button>
+              <button onClick={() => setMode("pk")} 
+                className="py-3 border flex flex-col items-center gap-1 hover:bg-white/5 transition-colors opacity-60"
+                style={{borderColor:C.line}}>
+                <span className="text-lg">🔑</span>
+                <span className="text-[8px] uppercase tracking-widest font-bold">nsec</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {mode === "nwc" && (
+          <div className="space-y-6">
+            <div className="p-4 bg-green-500/5 border-2 border-green-500/30">
+               <p className="text-[10px] uppercase tracking-widest mb-4 font-black" style={{color:C.leaf}}>Paste ZEUS (NWC) URI</p>
+               <textarea 
+                  value={nwcUri} 
+                  onChange={e=>setNwcUri(e.target.value)}
+                  className="w-full bg-black border-2 p-3 text-[10px] font-mono outline-none min-h-[120px] mb-4" 
+                  style={{borderColor:C.line, color:C.leaf}} 
+                  placeholder="nostr+walletconnect://..." 
+               />
+               <p className="text-[8px] uppercase tracking-tighter opacity-70 leading-relaxed">
+                  Generate a pairing string in ZEUS settings (NWC) to enable 1-click identity and zaps.
+               </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setMode("select")} className="flex-1 py-4 border-2 border-white/10 text-[10px] uppercase tracking-widest font-bold opacity-40 hover:opacity-100">Back</button>
+              <Btn onClick={() => {
+                const res = onSaveNwc(nwcUri);
+                if (res.success) {
+                  onLoginReadOnly(res.pubkey);
+                  onClose();
+                }
+              }} disabled={loading || !nwcUri}>Establish Pairing</Btn>
+            </div>
           </div>
         )}
 
         {mode === "pk" && (
           <div className="space-y-6">
             <div>
-              <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Enter hex private key</p>
+              <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Enter Private Key (nsec)</p>
+              <div className="p-3 mb-4 bg-red-900/20 border border-red-500/30 text-[9px] uppercase tracking-wider text-red-400 font-bold leading-relaxed">
+                ⚠️ WARNING: Never paste your primary nsec into a web app you don't trust. Use a burner account for mobile testing.
+              </div>
               <input type="password" value={pk} onChange={e=>setPk(e.target.value)}
                 className="w-full bg-black border p-3 text-xs font-mono outline-none" 
-                style={{borderColor:C.line, color:C.dew}} placeholder="nsec... or hex" />
+                style={{borderColor:C.line, color:C.dew}} placeholder="nsec1..." />
             </div>
             <div className="flex gap-2">
               <button onClick={() => setMode("select")} className="flex-1 py-3 border border-white/10 text-[10px] uppercase tracking-widest font-bold opacity-40">Back</button>
@@ -552,17 +596,41 @@ const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLog
           </div>
         )}
 
-        {mode === "remote" && (
+        {mode === "readonly" && (
           <div className="space-y-6">
             <div>
-              <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Bunker URI / Npub</p>
-              <input type="text" value={bunker} onChange={e=>setBunker(e.target.value)}
+              <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Enter Public Key (npub)</p>
+              <input type="text" value={pubkey} onChange={e=>setPubkey(e.target.value)}
                 className="w-full bg-black border p-3 text-xs font-mono outline-none" 
-                style={{borderColor:C.line, color:C.dew}} placeholder="npub1... or user@bunker.com" />
+                style={{borderColor:C.line, color:C.dew}} placeholder="npub1..." />
             </div>
             <div className="flex gap-2">
               <button onClick={() => setMode("select")} className="flex-1 py-3 border border-white/10 text-[10px] uppercase tracking-widest font-bold opacity-40">Back</button>
-              <Btn onClick={() => onLoginRemote(bunker)} disabled={loading || !bunker}>Connect</Btn>
+              <Btn onClick={() => onLoginReadOnly(pubkey)} disabled={loading || !pubkey}>Connect</Btn>
+            </div>
+          </div>
+        )}
+
+        {mode === "remote" && (
+          <div className="space-y-6">
+            <div className="p-3 bg-green-500/5 border border-green-500/30">
+              <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Bunker ID (npub or email)</p>
+              <input type="text" value={bunker} onChange={e=>setBunker(e.target.value)}
+                className="w-full bg-black border p-3 text-xs font-mono outline-none" 
+                style={{borderColor:C.line, color:C.dew}} placeholder="user@bunker.com" />
+            </div>
+            
+            <div className="text-center">
+              <span className="text-[8px] uppercase tracking-widest opacity-30">or</span>
+            </div>
+
+            <div className="text-[9px] uppercase tracking-tight opacity-60 leading-normal px-2">
+              Most users should enter their Bunker URI from ZEUS above. The app will then request authorization.
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setMode("select")} className="flex-1 py-3 border border-white/10 text-[10px] uppercase tracking-widest font-bold opacity-40 hover:opacity-100 transition-opacity">Back</button>
+              <Btn onClick={() => onLoginRemote(bunker)} disabled={loading || !bunker}>Start Authorization</Btn>
             </div>
           </div>
         )}
@@ -587,14 +655,19 @@ const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
         <h2 style={{fontFamily:DF, fontSize:24, color:C.amber, marginBottom:24, letterSpacing:2}}>LIGHTNING SETUP</h2>
         
         <div className="space-y-6">
-          <div>
-            <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Nostr Wallet Connect (NWC) URI</p>
+          <div className="p-3 bg-amber-500/5 border border-amber-500/30">
+            <p className="text-[9px] uppercase tracking-wider text-amber-500 font-bold leading-relaxed mb-3">
+              ⚡️ Mobile optimized zapping
+            </p>
+            <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">NWC pairing URI</p>
             <textarea value={uri} onChange={e=>setUri(e.target.value)}
               className="w-full bg-black border p-3 text-[10px] font-mono outline-none min-h-[100px]" 
               style={{borderColor:C.line, color:C.dew}} placeholder="nostr+walletconnect://..." />
-            <p className="text-[8px] mt-2 opacity-40 leading-relaxed uppercase">Required for mobile browser zaps. Get this from Alby or your NWC provider.</p>
+            <p className="text-[8px] mt-3 opacity-60 leading-relaxed uppercase font-bold text-amber-200/50">
+              Paste your NWC string from Zeus to enable 1-click zaps.
+            </p>
           </div>
-          <Btn onClick={() => { if(onSaveNwc(uri)) onClose(); else alert("Invalid URI"); }} disabled={!uri}>Save Connection</Btn>
+          <Btn onClick={() => { if(onSaveNwc(uri)) onClose(); else alert("Invalid URI"); }} disabled={!uri}>Enable 1-Click Zaps</Btn>
         </div>
       </div>
     </div>
@@ -606,7 +679,7 @@ const NodeDetailView = memo(({node, onBack}) => {
   const {state} = useStore();
   const font = SF(state.lang);
   const { zap, saveNwc, loading: zapLoading, error: zapError } = useLightning();
-  const { fetchComments, postComment, user, loginNip07, loginPrivateKey, loginRemote, error: nostrError, loading: nostrLoading } = useNostr();
+  const { fetchComments, postComment, user, loginNip07, loginPrivateKey, loginRemote, loginReadOnly, error: nostrError, loading: nostrLoading } = useNostr();
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
@@ -619,10 +692,17 @@ const NodeDetailView = memo(({node, onBack}) => {
   }, [node.id, fetchComments]);
 
   const handleZap = async () => {
-    const success = await zap(1000);
+    // If not logged in at all, open connect modal
+    if (!user) {
+      setIsConnectOpen(true);
+      return;
+    }
+
+    const success = await zap(1000, node.id === "0" ? "gwg@getalby.com" : "storage@nostr.com");
     if (success) {
-      alert("⚡ Zap successful! Nostr event broadcasted.");
+      alert("⚡ ZAP SUCCESSFUL! BIOMASS NODE LOGGED.");
     } else {
+      // If zap fails (e.g. no wallet), show setup
       setIsLightningOpen(true);
     }
   };
@@ -774,6 +854,8 @@ const NodeDetailView = memo(({node, onBack}) => {
                       onLoginNip07={loginNip07}
                       onLoginPK={loginPrivateKey}
                       onLoginRemote={loginRemote}
+                      onLoginReadOnly={loginReadOnly}
+                      onSaveNwc={saveNwc}
                       loading={nostrLoading}
                       error={nostrError}
                    />
@@ -1593,7 +1675,8 @@ function AppShell() {
   const [tab,setTab] = useState("feed");
   const [connected,setConnected] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
-  const { user, profile, loginNip07, loginPrivateKey, loginRemote, error: nostrError, loading: nostrLoading } = useNostr();
+  const { user, profile, loginNip07, loginPrivateKey, loginRemote, loginReadOnly, error: nostrError, loading: nostrLoading } = useNostr();
+  const { saveNwc } = useLightning();
 
   const connect    = useCallback(w=>{dispatch({type:"CONNECT",payload:w});setConnected(true);},[dispatch]);
   const disconnect = useCallback(()=>{dispatch({type:"DISCONNECT"});setConnected(false);setTab("feed");},[dispatch]);
@@ -1638,6 +1721,8 @@ function AppShell() {
                     onLoginNip07={loginNip07}
                     onLoginPK={loginPrivateKey}
                     onLoginRemote={loginRemote}
+                    onLoginReadOnly={loginReadOnly}
+                    onSaveNwc={saveNwc}
                     loading={nostrLoading}
                     error={nostrError}
                  />

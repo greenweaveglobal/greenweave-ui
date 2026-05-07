@@ -61,17 +61,41 @@ export function useNostr() {
     try {
       // For NIP-46, we need a local signer first (can be ephemeral)
       const localSigner = NDKPrivateKeySigner.generate();
-      const remoteUser = new NDKUser({ npub: bunkerUri.split('@')[0] }); // Simplified parsing
       const signer = new NDKNip46Signer(ndk, bunkerUri, localSigner);
+      
+      console.log(`[NIP-46] Connecting to ${bunkerUri}...`);
       
       signer.on("authUrl", (url: string) => {
         window.open(url, '_blank');
       });
 
+      // Show a toast or notification in a real app here with the URI if needed
+      // const connectUri = `nostrconnect://${localSigner.user().pubkey}?relay=${encodeURIComponent('wss://relay.damus.io')}&metadata=${encodeURIComponent(JSON.stringify({name: 'Green Weave'}))}`;
+
       await signer.blockUntilReady();
       await initUser(signer);
     } catch (err: any) {
-      setError(err.message || "Remote Signer failed");
+      setError(err.message || "Remote Signer failed. Check your Bunker URI.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loginReadOnly = useCallback(async (pubkey: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const ndkUser = new NDKUser({ 
+        npub: pubkey.startsWith('npub') ? pubkey : undefined,
+        pubkey: !pubkey.startsWith('npub') ? pubkey : undefined
+      });
+      ndkUser.ndk = ndk;
+      setUser(ndkUser);
+      const profileData = await ndkUser.fetchProfile();
+      setProfile(profileData);
+      ndk.signer = undefined; // Ensure no signer for read-only
+    } catch (err: any) {
+      setError(err.message || "Read-only Login failed");
     } finally {
       setLoading(false);
     }
@@ -116,6 +140,7 @@ export function useNostr() {
     loginNip07,
     loginPrivateKey,
     loginRemote,
+    loginReadOnly,
     logout,
     fetchComments,
     postComment,
