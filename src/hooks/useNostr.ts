@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import NDK, { NDKUser, NDKEvent, NDKNip07Signer } from '@nostr-dev-kit/ndk';
+import NDK, { NDKUser, NDKEvent, NDKNip07Signer, NDKPrivateKeySigner, NDKNip46Signer } from '@nostr-dev-kit/ndk';
 
-// Global NDK instance to avoid re-initialization
+// Global NDK instance
 const ndk = new NDK({
-  explicitRelayUrls: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
+  explicitRelayUrls: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band', 'wss://relay.f7z.io'],
 });
 
 export function useNostr() {
@@ -16,28 +16,62 @@ export function useNostr() {
     ndk.connect().catch(err => console.error("NDK Connect Error", err));
   }, []);
 
-  const login = useCallback(async () => {
+  const initUser = async (signer: any) => {
+    ndk.signer = signer;
+    const ndkUser = await signer.user();
+    if (ndkUser) {
+      ndkUser.ndk = ndk;
+      setUser(ndkUser);
+      const profileData = await ndkUser.fetchProfile();
+      setProfile(profileData);
+    }
+    return ndkUser;
+  };
+
+  const loginNip07 = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      if (!(window as any).nostr) {
-        throw new Error("No Nostr extension found (NIP-07)");
-      }
-
+      if (!(window as any).nostr) throw new Error("No Nostr extension found");
       const signer = new NDKNip07Signer();
-      ndk.signer = signer;
-      
-      const ndkUser = await signer.user();
-      if (ndkUser) {
-        ndkUser.ndk = ndk;
-        setUser(ndkUser);
-        
-        // Fetch profile
-        const profileData = await ndkUser.fetchProfile();
-        setProfile(profileData);
-      }
+      await initUser(signer);
     } catch (err: any) {
-      setError(err.message || "Failed to connect Nostr");
+      setError(err.message || "NIP-07 Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loginPrivateKey = useCallback(async (sk: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const signer = new NDKPrivateKeySigner(sk);
+      await initUser(signer);
+    } catch (err: any) {
+      setError(err.message || "Private Key Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loginRemote = useCallback(async (bunkerUri: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // For NIP-46, we need a local signer first (can be ephemeral)
+      const localSigner = NDKPrivateKeySigner.generate();
+      const remoteUser = new NDKUser({ npub: bunkerUri.split('@')[0] }); // Simplified parsing
+      const signer = new NDKNip46Signer(ndk, bunkerUri, localSigner);
+      
+      signer.on("authUrl", (url: string) => {
+        window.open(url, '_blank');
+      });
+
+      await signer.blockUntilReady();
+      await initUser(signer);
+    } catch (err: any) {
+      setError(err.message || "Remote Signer failed");
     } finally {
       setLoading(false);
     }
@@ -79,7 +113,9 @@ export function useNostr() {
     profile,
     loading,
     error,
-    login,
+    loginNip07,
+    loginPrivateKey,
+    loginRemote,
     logout,
     fetchComments,
     postComment,

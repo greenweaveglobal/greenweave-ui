@@ -501,16 +501,118 @@ const ExplorerTab = memo(() => {
   );
 });
 
+// ─── NOSTR CONNECT MODAL ──────────────────────────────────────
+const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLoginRemote, loading, error}) => {
+  const [pk, setPk] = useState("");
+  const [bunker, setBunker] = useState("");
+  const [mode, setMode] = useState("select"); // select, pk, remote
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-sm border-2 bg-[#050505] p-8 relative" style={{borderColor:C.line}}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100">×</button>
+        
+        <h2 style={{fontFamily:DF, fontSize:24, color:C.leaf, marginBottom:24, letterSpacing:2}}>CONNECT NOSTR</h2>
+
+        {mode === "select" && (
+          <div className="space-y-4">
+            <button onClick={onLoginNip07} 
+              className="w-full py-4 border-2 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors"
+              style={{borderColor:C.line}}>
+              <span className="text-2xl">🧩</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold">Extension (NIP-07)</span>
+            </button>
+            <button onClick={() => setMode("remote")} 
+              className="w-full py-4 border border-white/10 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors">
+              <span className="text-2xl">☁️</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">Nostr Connect (NIP-46)</span>
+            </button>
+            <button onClick={() => setMode("pk")} 
+              className="w-full py-4 border border-white/10 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors">
+              <span className="text-2xl">🔑</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">Private Key (Testing)</span>
+            </button>
+          </div>
+        )}
+
+        {mode === "pk" && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Enter hex private key</p>
+              <input type="password" value={pk} onChange={e=>setPk(e.target.value)}
+                className="w-full bg-black border p-3 text-xs font-mono outline-none" 
+                style={{borderColor:C.line, color:C.dew}} placeholder="nsec... or hex" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setMode("select")} className="flex-1 py-3 border border-white/10 text-[10px] uppercase tracking-widest font-bold opacity-40">Back</button>
+              <Btn onClick={() => onLoginPK(pk)} disabled={loading || !pk}>Connect</Btn>
+            </div>
+          </div>
+        )}
+
+        {mode === "remote" && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Bunker URI / Npub</p>
+              <input type="text" value={bunker} onChange={e=>setBunker(e.target.value)}
+                className="w-full bg-black border p-3 text-xs font-mono outline-none" 
+                style={{borderColor:C.line, color:C.dew}} placeholder="npub1... or user@bunker.com" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setMode("select")} className="flex-1 py-3 border border-white/10 text-[10px] uppercase tracking-widest font-bold opacity-40">Back</button>
+              <Btn onClick={() => onLoginRemote(bunker)} disabled={loading || !bunker}>Connect</Btn>
+            </div>
+          </div>
+        )}
+
+        {loading && <div className="mt-6 text-center text-[10px] uppercase tracking-[4px] animate-pulse" style={{color:C.leaf}}>Initializing Auth...</div>}
+        {error && <p className="mt-4 text-[10px] text-red-500 font-bold text-center uppercase tracking-tight">{error}</p>}
+      </div>
+    </div>
+  );
+});
+
+// ─── LIGHTNING CONNECT MODAL ──────────────────────────────────
+const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
+  const [uri, setUri] = useState("");
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-sm border-2 bg-[#050505] p-8 relative" style={{borderColor:C.line}}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100">×</button>
+        <h2 style={{fontFamily:DF, fontSize:24, color:C.amber, marginBottom:24, letterSpacing:2}}>LIGHTNING SETUP</h2>
+        
+        <div className="space-y-6">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">Nostr Wallet Connect (NWC) URI</p>
+            <textarea value={uri} onChange={e=>setUri(e.target.value)}
+              className="w-full bg-black border p-3 text-[10px] font-mono outline-none min-h-[100px]" 
+              style={{borderColor:C.line, color:C.dew}} placeholder="nostr+walletconnect://..." />
+            <p className="text-[8px] mt-2 opacity-40 leading-relaxed uppercase">Required for mobile browser zaps. Get this from Alby or your NWC provider.</p>
+          </div>
+          <Btn onClick={() => { if(onSaveNwc(uri)) onClose(); else alert("Invalid URI"); }} disabled={!uri}>Save Connection</Btn>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // ─── NODE DETAIL VIEW ─────────────────────────────────────────
 const NodeDetailView = memo(({node, onBack}) => {
   const {state} = useStore();
   const font = SF(state.lang);
-  const { zap, loading: zapLoading, error: zapError } = useLightning();
-  const { fetchComments, postComment, user, login } = useNostr();
+  const { zap, saveNwc, loading: zapLoading, error: zapError } = useLightning();
+  const { fetchComments, postComment, user, loginNip07, loginPrivateKey, loginRemote, error: nostrError, loading: nostrLoading } = useNostr();
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [isLightningOpen, setIsLightningOpen] = useState(false);
 
   useEffect(() => {
     fetchComments(node.id).then(setComments);
@@ -518,7 +620,11 @@ const NodeDetailView = memo(({node, onBack}) => {
 
   const handleZap = async () => {
     const success = await zap(1000);
-    if (success) alert("⚡ Zap successful! Nostr event broadcasted.");
+    if (success) {
+      alert("⚡ Zap successful! Nostr event broadcasted.");
+    } else {
+      setIsLightningOpen(true);
+    }
   };
 
   const handlePostComment = async () => {
@@ -563,6 +669,11 @@ const NodeDetailView = memo(({node, onBack}) => {
             </button>
           </div>
           {zapError && <p className="text-[8px] text-red-500 mt-2">{zapError}</p>}
+          <LightningConnectModal 
+            isOpen={isLightningOpen} 
+            onClose={() => setIsLightningOpen(false)} 
+            onSaveNwc={saveNwc} 
+          />
         </div>
       </div>
 
@@ -655,7 +766,18 @@ const NodeDetailView = memo(({node, onBack}) => {
 
            <div className="pt-8 border-t" style={{borderColor:C.line}}>
               {!user ? (
-                 <Btn full onClick={login}>Connect Nostr to Log Progress</Btn>
+                 <>
+                   <Btn full onClick={() => setIsConnectOpen(true)}>Connect Nostr to Log Progress</Btn>
+                   <NostrConnectModal 
+                      isOpen={isConnectOpen} 
+                      onClose={() => setIsConnectOpen(false)}
+                      onLoginNip07={loginNip07}
+                      onLoginPK={loginPrivateKey}
+                      onLoginRemote={loginRemote}
+                      loading={nostrLoading}
+                      error={nostrError}
+                   />
+                 </>
               ) : (
                  <div className="space-y-3">
                     <textarea 
@@ -1470,7 +1592,8 @@ function AppShell() {
   const font = SF(state.lang);
   const [tab,setTab] = useState("feed");
   const [connected,setConnected] = useState(false);
-  const { user, profile, login: loginNostr, loading: nostrLoading } = useNostr();
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const { user, profile, loginNip07, loginPrivateKey, loginRemote, error: nostrError, loading: nostrLoading } = useNostr();
 
   const connect    = useCallback(w=>{dispatch({type:"CONNECT",payload:w});setConnected(true);},[dispatch]);
   const disconnect = useCallback(()=>{dispatch({type:"DISCONNECT"});setConnected(false);setTab("feed");},[dispatch]);
@@ -1503,11 +1626,22 @@ function AppShell() {
           </div>
           <div className="flex items-center gap-4">
             {!user ? (
-               <button onClick={loginNostr} disabled={nostrLoading}
-                 className="px-3 py-1.5 text-[9px] uppercase tracking-[2px] font-bold border rounded-none hover:bg-white/5"
-                 style={{borderColor:C.line, color:C.leaf}}>
-                 {nostrLoading ? "CONNECTING..." : "CONNECT NOSTR"}
-               </button>
+               <>
+                 <button onClick={() => setIsConnectOpen(true)} disabled={nostrLoading}
+                   className="px-3 py-1.5 text-[9px] uppercase tracking-[2px] font-bold border rounded-none hover:bg-white/5"
+                   style={{borderColor:C.line, color:C.leaf}}>
+                   {nostrLoading ? "CONNECTING..." : "CONNECT NOSTR"}
+                 </button>
+                 <NostrConnectModal 
+                    isOpen={isConnectOpen} 
+                    onClose={() => setIsConnectOpen(false)}
+                    onLoginNip07={loginNip07}
+                    onLoginPK={loginPrivateKey}
+                    onLoginRemote={loginRemote}
+                    loading={nostrLoading}
+                    error={nostrError}
+                 />
+               </>
             ) : (
                <div className="flex items-center gap-3 px-3 py-1.5 border" style={{borderColor:C.line, background:C.ghost}}>
                   <div className="w-5 h-5 overflow-hidden border" style={{borderColor:C.leaf}}>

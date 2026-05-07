@@ -9,25 +9,25 @@ export function useLightning() {
     setError(null);
     try {
       const webln = (window as any).webln;
-      if (!webln) {
-        throw new Error("No Lightning wallet (WebLN) detected. Please install Alby or a compatible wallet.");
+      
+      // Try WebLN first
+      if (webln) {
+        await webln.enable();
+        // In a real app, you'd fetch an invoice and call webln.sendPayment(bolt11)
+        console.log(`Zapping ${amount} sats to ${address} via WebLN`);
+        return true;
       }
 
-      await webln.enable();
-      
-      // Attempt to use lnurl-pay if it's an address, or just a static invoice request if we had a backend
-      // For this demo, we'll simulate the payment request or use sendPayment if we had a bolt11
-      // Since we don't have a backend to generate invoices, we'll try to use makeInvoice if supported or sendPayment
-      
-      // In a real app, you'd fetch an invoice from the 'address' via LNURL
-      // Here we simulate the flow:
-      console.log(`Zapping ${amount} sats to ${address}`);
-      
-      // Example WebLN call (will fail if not properly configured in browser but following standard)
-      // await webln.sendPayment(bolt11); 
-      
-      // For the sake of the demo, we show the intent
-      return true;
+      // Check for NWC (Nostr Wallet Connect) if WebLN is missing
+      const nwcUri = localStorage.getItem('nwc_uri');
+      if (nwcUri) {
+        console.log(`Zapping ${amount} sats to ${address} via NWC`);
+        // Here you would use an NWC library to send the payment
+        // For now, we simulate the persistent connection check
+        return true;
+      }
+
+      throw new Error("No Lightning wallet (WebLN/NWC) detected.");
     } catch (err: any) {
       setError(err.message || "Lightning Zap failed");
       return false;
@@ -36,8 +36,17 @@ export function useLightning() {
     }
   }, []);
 
+  const saveNwc = useCallback((uri: string) => {
+    if (uri.startsWith('nostr+walletconnect:')) {
+      localStorage.setItem('nwc_uri', uri);
+      return true;
+    }
+    return false;
+  }, []);
+
   return {
     zap,
+    saveNwc,
     loading,
     error
   };
