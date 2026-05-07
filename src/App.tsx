@@ -512,9 +512,9 @@ const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLog
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-sm border-2 bg-[#050505] p-8 relative" style={{borderColor:C.line}}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-md border-2 bg-neutral-900 p-6 relative max-h-[90vh] overflow-y-auto" style={{borderColor:C.line}}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-10">×</button>
         
         <h2 style={{fontFamily:DF, fontSize:24, color:C.leaf, marginBottom:24, letterSpacing:2}}>CONNECT WALLET</h2>
 
@@ -649,9 +649,9 @@ const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-sm border-2 bg-[#050505] p-8 relative" style={{borderColor:C.line}}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-md border-2 bg-neutral-900 p-6 relative max-h-[90vh] overflow-y-auto" style={{borderColor:C.line}}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-10">×</button>
         <h2 style={{fontFamily:DF, fontSize:24, color:C.amber, marginBottom:24, letterSpacing:2}}>LIGHTNING SETUP</h2>
         
         <div className="space-y-6">
