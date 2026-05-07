@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useReducer, memo, createContext, useContext, useEffect } from "react";
+import { Copy, MapPin, ExternalLink, ShieldCheck } from "lucide-react";
 import { GENESIS_NODES } from "./lib/data/genesisNodes";
 import { useNostr } from "./hooks/useNostr";
 import { useLightning } from "./hooks/useLightning";
@@ -1570,89 +1571,107 @@ const StorageInfo = memo(() => {
 // ─── PROFILE / WALLET ─────────────────────────────────────────
 const ProfileTab = memo(({onDisconnect}) => {
   const {state} = useStore();
+  const { user, profile } = useNostr();
   const font = SF(state.lang);
+  const [copied, setCopied] = useState(false);
+
+  const copyNpub = () => {
+    if (user?.npub) {
+      navigator.clipboard.writeText(user.npub);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   if(!state.wallet) return (
     <div className="text-center py-16" style={{color:"#595959",fontFamily:font}}>
       <p style={{fontSize:40,marginBottom:12}}>🌿</p>
       <p className="text-sm">Connect wallet to view profile</p>
     </div>
   );
-  const usdg = state.wallet?.usdg||0;
+
   return (
     <div style={{fontFamily:font}}>
       <Card className="mb-3" style={{background:"linear-gradient(to bottom right, rgba(212,175,55,0.08), transparent)",borderColor:`${C.leaf}22`}}>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-none flex items-center justify-center text-2xl border"
-            style={{background:`${C.leaf}12`,borderColor:`${C.leaf}30`}}>🌿</div>
-          <div>
-            <p style={{fontFamily:DF,fontSize:16,color:"#ffffff"}}>Green Weave Member</p>
-            <p className="text-[9px] font-mono mt-0.5" style={{color:"#8c8c8c"}}>{state.wallet.address}</p>
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-16 h-16 rounded-none overflow-hidden border-2 flex-shrink-0"
+            style={{borderColor:C.leaf, background:C.ghost}}>
+            <img 
+              src={profile?.image || `https://robohash.org/${user?.pubkey || 'anon'}`} 
+              className="w-full h-full object-cover" 
+              alt="Profile"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 style={{fontFamily:DF,fontSize:20,color:"#ffffff",lineHeight:1.1}} className="mb-1">
+              {profile?.name || "Green Weave Scout"}
+            </h2>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[10px] font-mono opacity-50 truncate">
+                {user?.npub ? `${user.npub.slice(0, 12)}...${user.npub.slice(-8)}` : "Guest Identity"}
+              </p>
+              {user?.npub && (
+                <button onClick={copyNpub} className="p-1 hover:text-green-500 transition-colors">
+                  <Copy size={10} className={copied ? "text-green-500" : ""} />
+                </button>
+              )}
+            </div>
+            {profile?.about && (
+              <p className="text-[10px] leading-relaxed opacity-60 line-clamp-2">
+                {profile.about}
+              </p>
+            )}
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-1.5">
+
+        <div className="grid grid-cols-3 gap-2">
           {[
-            {v:state.mintedNFTs.length, l:"NFTs",   c:C.leaf},
-            {v:usdg,                   l:"USDG",   c:C.usdg},
-            {v:state.wallet?.carbon||0,l:"CO₂ t",  c:C.sky},
-            {v:"Bitcoin",               l:"Chain",  c:C.amber},
+            {v: "0", l: "Biomass Nodes", c: C.leaf},
+            {v: "0", l: "Sats Zapped",   c: C.amber},
+            {v: "0.00", l: "CO₂ Seq (kg)", c: C.sky},
           ].map((s,i)=>(
-            <div key={i} className="text-center rounded-none py-2"
-              style={{background:`${s.c}08`}}>
-              <p className="text-sm font-semibold" style={{color:s.c}}>{s.v}</p>
-              <p className="text-[8px]" style={{color:"#8c8c8c"}}>{s.l}</p>
+            <div key={i} className="text-center border py-2"
+              style={{background:`${s.c}05`, borderColor: `${s.c}15`}}>
+              <p className="text-sm font-black" style={{color:s.c}}>{s.v}</p>
+              <p className="text-[7px] uppercase tracking-widest font-bold opacity-50" style={{color:s.c}}>{s.l}</p>
             </div>
           ))}
         </div>
       </Card>
 
-      {state.mintedNFTs.length>0&&(
-        <div className="mb-3">
-          <p className="text-[9px] tracking-[3px] uppercase mb-2.5" style={{color:C.leaf}}>Your NFTs</p>
-          {state.mintedNFTs.map((n,i)=>(
-            <Card key={i} className="mb-2 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span style={{fontSize:20}}>{n.tier==="thread"?"🌱":"🏡"}</span>
-                <div>
-                  <p className="text-xs font-semibold" style={{color:"#e0e0e0"}}>{n.name}</p>
-                  <p className="text-[9px]" style={{color:"#8c8c8c"}}>{n.date}</p>
-                </div>
-              </div>
-              <Pill color={n.tier==="thread"?C.leaf:C.amber}>
-                {n.tier==="thread"?"One Thread":"One Garden"}
-              </Pill>
-            </Card>
-          ))}
-        </div>
-      )}
-
       <Card style={{borderColor:`${C.leaf}18`,background:`${C.leaf}03`}}>
-        <p className="text-[9px] tracking-[3px] uppercase mb-3" style={{color:C.leaf}}>
-          Roadmap · Bitcoin & RGB
-        </p>
+        <div className="flex items-center gap-2 mb-4">
+           <ShieldCheck size={14} style={{color:C.leaf}} />
+           <p className="text-[9px] tracking-[3px] uppercase font-black" style={{color:C.leaf}}>
+             Ecosystem Roadmap
+           </p>
+        </div>
         {[
-          {step:"Now",           desc:"Green Weave · Bitcoin RGB · Global community · USDG", done:true},
-          {step:"1,000+ members",desc:"Garden Nodes · Carbon credits · Leaderboard rewards"},
-          {step:"When ready",    desc:"Full integration with Elysia Wealth"},
+          {step:"Now", desc:"Genesis Covenant Deployed · Bitcoin Anchored", done:true},
+          {step:"Next", desc:"Nostr Biomass Explorer · Community Discovery", done:false},
+          {step:"Future", desc:"RGB Asset Issuance · Digital Green Credits", done:false},
         ].map((r,i)=>(
-          <div key={i} className="flex gap-3 mb-3">
-            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 border"
-              style={{background:r.done?`${C.leaf}18`:"transparent",
-                borderColor:r.done?C.leaf:"rgba(255,255,255,0.1)",
-                color:r.done?C.leaf:"#595959"}}>
-              {r.done?"✓":"○"}
+          <div key={i} className="flex gap-3 mb-4 last:mb-0">
+            <div className="w-5 h-5 flex items-center justify-center text-[10px] flex-shrink-0 border-2"
+              style={{
+                borderColor:r.done ? C.leaf : "rgba(255,255,255,0.1)",
+                color: r.done ? C.leaf : "#595959",
+                background: r.done ? `${C.leaf}10` : "transparent"
+              }}>
+              {r.done ? "✓" : i + 1}
             </div>
             <div>
-              <p className="text-[10px] font-semibold" style={{color:r.done?C.dew:"#8c8c8c"}}>{r.step}</p>
-              <p className="text-[9px]" style={{color:r.done?"#a6a6a6":"#595959"}}>{r.desc}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest mb-0.5" style={{color:r.done?C.leaf:"#595959"}}>{r.step}</p>
+              <p className="text-[10px] leading-snug opacity-60" style={{color:r.done?"#ffffff":"#595959"}}>{r.desc}</p>
             </div>
           </div>
         ))}
       </Card>
 
       <button onClick={onDisconnect}
-        className="w-full mt-3 py-2.5 rounded-none text-xs border cursor-pointer font-bold"
-        style={{background:"transparent",borderColor:"rgba(255,255,255,0.07)",color:"#595959",fontFamily:"inherit"}}>
-        Disconnect wallet
+        className="w-full mt-4 py-3 border-2 text-[10px] uppercase tracking-[3px] font-black transition-all hover:bg-white/5"
+        style={{borderColor:C.line, color:"#595959"}}>
+        LOGOUT IDENTITY
       </button>
     </div>
   );
