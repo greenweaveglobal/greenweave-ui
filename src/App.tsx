@@ -1,4 +1,7 @@
-import { useState, useCallback, useMemo, useReducer, memo, createContext, useContext } from "react";
+import { useState, useCallback, useMemo, useReducer, memo, createContext, useContext, useEffect } from "react";
+import { GENESIS_NODES } from "./lib/data/genesisNodes";
+import { useNostr } from "./hooks/useNostr";
+import { useLightning } from "./hooks/useLightning";
 
 // ─── FONTS ────────────────────────────────────────────────────
 (() => {
@@ -9,7 +12,7 @@ import { useState, useCallback, useMemo, useReducer, memo, createContext, useCon
 })();
 
 const DF = "'Cormorant Garamond',Georgia,serif";
-const SF = (lang) => lang === "ja" ? "'Noto Sans JP',sans-serif" : "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+const SF = (lang) => lang === "ja" ? "'Noto Sans JP',sans-serif" : "var(--font-sans)";
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────
 const C = {
@@ -100,93 +103,7 @@ const INIT = {
     { id:"n3", name:"Binh Phuoc Forest",  owner:"Hoa",  city:"Binh Phuoc", ha:5,   status:"building", members:3,  carbonPerYear:12,  stayEnabled:true  },
     { id:"n4", name:"Osaka Bamboo Grove", owner:"Yuki", city:"Osaka",      ha:0.05,status:"active",   members:5,  carbonPerYear:0.8, stayEnabled:false },
   ],
-  explorerNodes: [
-    { 
-      id: "BWN000", 
-      name: "Musa acuminata", 
-      common: "Wild Banana", 
-      species: "Musa acuminata",
-      status: "Mature",
-      climate: "Tropical",
-      utility: "Carbon sink / Biomass",
-      img: "🍌",
-      covenant: "The banana is the first of the covenant. Like Bitcoin, it starts with a single seed but grows into a massive network of clones (suckers). It is the proof of nature's scalability.",
-      genesisQuote: "Nature's proof of work is the growth of the canopy.",
-      characteristics: { growth: "Fast", light: "Full Sun", water: "High" },
-      tips: "Fukuoka method: Mulch heavily with organic matter. Do not clear-cut the stalks after harvest; let them return to the soil.",
-      useCases: ["Carbon sequestration", "Soil regeneration", "Food security"],
-      companions: ["Papaya", "Sweet Potato", "Coffee"],
-      pubkey: "npub1satoshi00deadbeef..."
-    },
-    { 
-      id: "BWN001", 
-      name: "Bambuseae", 
-      common: "Giant Bamboo", 
-      species: "Bambusa vulgaris",
-      status: "Seedling",
-      climate: "Tropical",
-      utility: "Structural / Fiber",
-      img: "🎋",
-      covenant: "Bamboo is the resilient network. It waits underneath, building a massive root system before exploding upward. It is the architectural foundation of the green economy.",
-      genesisQuote: "Wait for the root system to be ready before the growth happens.",
-      characteristics: { growth: "Hyper-fast", light: "Partial Sun", water: "Medium" },
-      tips: "No-till: Plant into undisturbed soil. Use as a windbreak for more delicate nodes.",
-      useCases: ["Sustainable building", "Plastic alternative", "Erosion control"],
-      companions: ["Beans", "Lemongrass"],
-      pubkey: "npub1roots..."
-    },
-    { 
-      id: "BWN002", 
-      name: "Fungi", 
-      common: "Reishi", 
-      species: "Ganoderma lucidum",
-      status: "Regenerating",
-      climate: "Temperate",
-      utility: "Medicinal / Decomposition",
-      img: "🍄",
-      covenant: "The mycelium is the true decentralized protocol. It moves information and nutrients across different species without a central hub. It is the internet of the forest.",
-      genesisQuote: "Decentralized consensus through nutrient exchange.",
-      characteristics: { growth: "Medium", light: "Low", water: "High" },
-      tips: "Log inoculation: Drill holes into hardwood logs. Keep in moist, shaded areas.",
-      useCases: ["Health tonic", "Soil breakdown", "Immunity anchoring"],
-      companions: ["Oak", "Maple"],
-      pubkey: "npub1mycelium..."
-    },
-    { 
-      id: "BWN003", 
-      name: "Chlorella", 
-      common: "Green Algae", 
-      species: "Chlorella vulgaris",
-      status: "Mature",
-      climate: "Arid",
-      utility: "Oxygen / Bio-fuel",
-      img: "🧪",
-      covenant: "Algae is the liquid sunshine. It captures energy with extreme efficiency, reminding us that the most powerful protocols are often the simplest and most widespread.",
-      genesisQuote: "Simplicity is the ultimate scale.",
-      characteristics: { growth: "Instant", light: "High", water: "Aquatic" },
-      tips: "Bioreactor: Use clear containers to maximize light penetration. Supplement with CO2 if available.",
-      useCases: ["Oxygen production", "High-protein supplement", "Water purification"],
-      companions: ["Azolla", "Fish"],
-      pubkey: "npub1algae..."
-    },
-    { 
-      id: "BWN004", 
-      name: "Quercus", 
-      common: "Ancient Oak", 
-      species: "Quercus robur",
-      status: "Mature",
-      climate: "Temperate",
-      utility: "Keystone Species",
-      img: "🌳",
-      covenant: "The Oak is the block explorer. It records the history of the seasons in its rings, providing a permanent immutable record of the climate for centuries.",
-      genesisQuote: "Deep roots, slow blocks, eternal presence.",
-      characteristics: { growth: "Slow", light: "Full Sun", water: "Medium" },
-      tips: "Patience: Protection from herbivores is critical in the first 5 years. Do not move once planted.",
-      useCases: ["Habitat creation", "Timber legacy", "Acorn harvest"],
-      companions: ["Truffles", "Hazelnut"],
-      pubkey: "npub1oak..."
-    }
-  ]
+  explorerNodes: GENESIS_NODES
 };
 
 function reducer(s, a) {
@@ -253,22 +170,22 @@ const useStore = () => useContext(Ctx);
 
 // ─── ATOMS ────────────────────────────────────────────────────
 const Pill = memo(({color, children, sm}) => (
-  <span className={`inline-flex items-center rounded-sm border ${sm?"px-1.5 py-0.5 text-[8px]":"px-2 py-0.5 text-[9px]"}`}
-    style={{color, background:color+"10", borderColor:color+"20", textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:500}}>{children}</span>
+  <span className={`inline-flex items-center rounded-none border ${sm?"px-1.5 py-0.5 text-[8px]":"px-2 py-1 text-[9px]"}`}
+    style={{color, background:color+"08", borderColor:color+"40", textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:600}}>{children}</span>
 ));
 
 const Card = memo(({children, className="", style={}}) => (
-  <div className={`rounded-sm border p-5 ${className}`}
-    style={{background:C.ghost, borderColor:C.line, ...style}}>{children}</div>
+  <div className={`rounded-none border p-5 ${className}`}
+    style={{background:"#0a0a0a", borderColor:"#1a1a1a", ...style}}>{children}</div>
 ));
 
 const Btn = memo(({children, onClick, color=C.leaf, full, disabled, sm, danger}) => (
   <button onClick={disabled?undefined:onClick}
-    className={`${full?"w-full":""} ${sm?"px-3 py-1.5 text-[9px]":"px-6 py-3 text-[11px]"} rounded-sm font-bold tracking-widest uppercase transition-colors`}
+    className={`${full?"w-full":""} ${sm?"px-3 py-1.5 text-[9px]":"px-6 py-3 text-[11px]"} rounded-none font-bold tracking-widest uppercase transition-all active:translate-y-px`}
     style={{
       background: danger?"rgba(244,63,94,0.1)":disabled?"rgba(255,255,255,0.02)":color,
       color: danger?C.red:disabled?"rgba(255,255,255,0.3)":"#000",
-      border: danger?`1px solid rgba(244,63,94,0.3)`:disabled?"1px solid rgba(255,255,255,0.05)":"1px solid transparent",
+      border: danger?`1px solid rgba(244,63,94,0.5)`:disabled?"1px solid rgba(255,255,255,0.1)":`1px solid ${color}`,
       fontFamily:"inherit", cursor:disabled?"default":"pointer",
     }}>{children}</button>
 ));
@@ -289,7 +206,7 @@ const LangSwitcher = memo(() => {
     <div className="flex gap-1">
       {["vi","en","ja"].map(l=>(
         <button key={l} onClick={()=>dispatch({type:"SET_LANG",payload:l})}
-          className="px-2 py-0.5 rounded-full text-[9px] border cursor-pointer"
+          className="px-2 py-0.5 rounded-none text-[9px] border cursor-pointer"
           style={{background:state.lang===l?"rgba(212,175,55,0.18)":"transparent",
             borderColor:state.lang===l?"rgba(212,175,55,0.45)":"rgba(255,255,255,0.1)",
             color:state.lang===l?C.dew:"#8c8c8c",fontFamily:"inherit"}}>
@@ -367,14 +284,14 @@ const ConnectGate = memo(({onConnect}) => {
     }
 
     try {
-      const event = {
+      const event: any = {
         kind: 1,
         created_at: Math.floor(Date.now() / 1000),
         tags: [["node", nodeName], ["storage", storagePref]],
         content: `I accept the Genesis Covenant.
 Node: ${nodeName}`
       };
-      await window.nostr.signEvent(event);
+      await (window as any).nostr.signEvent(event);
       setStep(4);
     } catch (err) {
       setError("Signing failed or rejected.");
@@ -425,18 +342,18 @@ Node: ${nodeName}`
               {loading ? "Discovering..." : "Connect Identity (NIP-07)"}
             </Btn>
             <button onClick={() => connectNostr(true)}
-              className="py-3 rounded-sm text-[9px] uppercase tracking-widest transition-colors border mt-1"
+              className="py-3 rounded-none text-[9px] uppercase tracking-widest transition-colors border mt-1"
               style={{background:"transparent",borderColor:C.line,color:"#595959",fontFamily:"inherit",cursor:"pointer"}}>
               Simulate Connection (Demo)
             </button>
-            {error && <p className="text-[10px] mt-2 p-2 rounded-sm" style={{color:C.bg, background:C.red}}>{error}</p>}
+            {error && <p className="text-[10px] mt-2 p-2 rounded-none" style={{color:C.bg, background:C.red}}>{error}</p>}
           </div>
         )}
 
         {/* STEP 2: Soil Configuration */}
         {step === 2 && (
           <div className="u2 flex flex-col gap-5 text-left">
-            <div className="p-4 border rounded-sm" style={{borderColor:C.line, background:"#0a0a0a"}}>
+            <div className="p-4 border rounded-none" style={{borderColor:C.line, background:"#0a0a0a"}}>
                <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{color:C.leaf}}>Connected Seed (Pubkey)</p>
                <p className="text-sm font-mono" style={{color:C.dew}}>{npub}</p>
             </div>
@@ -444,14 +361,14 @@ Node: ${nodeName}`
             <div className="flex flex-col gap-2.5">
               <label className="text-[10px] uppercase tracking-widest px-1" style={{color:C.mist}}>Node Name</label>
               <input type="text" value={nodeName} onChange={e=>setNodeName(e.target.value)} placeholder="e.g. Saigon Garden"
-                className="w-full p-3.5 bg-transparent border outline-none rounded-sm text-sm" 
+                className="w-full p-3.5 bg-transparent border outline-none rounded-none text-sm" 
                 style={{borderColor:C.line, color:C.dew, fontFamily:"inherit"}} />
             </div>
 
             <div className="flex flex-col gap-2.5">
               <label className="text-[10px] uppercase tracking-widest px-1" style={{color:C.mist}}>Storage Preference</label>
               <select value={storagePref} onChange={e=>setStoragePref(e.target.value)}
-                className="w-full p-3.5 bg-[#050505] border outline-none rounded-sm text-sm" 
+                className="w-full p-3.5 bg-[#050505] border outline-none rounded-none text-sm" 
                 style={{borderColor:C.line, color:C.dew, fontFamily:"inherit"}}>
                 <option value="nostr">Nostr Relays (Ephemeral/Social)</option>
                 <option value="rgb">RGB State (Bitcoin L2/L3)</option>
@@ -470,7 +387,7 @@ Node: ${nodeName}`
           <div className="u2 flex flex-col gap-5 text-left">
             <p className="text-[10px] uppercase tracking-widest text-center" style={{color:C.mist}}>The Genesis Covenant</p>
             
-            <div className="p-5 border rounded-sm overflow-y-auto text-xs leading-relaxed" 
+            <div className="p-5 border rounded-none overflow-y-auto text-xs leading-relaxed" 
               style={{borderColor:C.line, background:"#0a0a0a", maxHeight: 180, color:"#a6a6a6"}}>
               <p className="mb-3">I, node operator of <strong style={{color:C.dew}}>{nodeName}</strong>, hereby pledge to participate in the Green Weave Global network.</p>
               <p className="mb-3">1. I acknowledge that ecological value is the foundation of this consensus.</p>
@@ -488,7 +405,7 @@ Node: ${nodeName}`
         {/* STEP 4: Germination */}
         {step === 4 && (
           <div className="u2 flex flex-col items-center gap-6 mt-4">
-            <div className="w-16 h-16 rounded-sm border flex items-center justify-center" style={{borderColor:C.leaf, background:"rgba(212,175,55,0.08)"}}>
+            <div className="w-16 h-16 rounded-none border flex items-center justify-center" style={{borderColor:C.leaf, background:"rgba(212,175,55,0.08)"}}>
                <span style={{fontSize:28, color:C.leaf}}>⧫</span>
             </div>
             
@@ -508,26 +425,22 @@ Node: ${nodeName}`
   );
 });
 
-// ─── EXPLORER TAB (GARDENING MANUAL) ────────────────────────
+// ─── EXPLORER TAB (GENESIS COVENANT) ────────────────────────
 const ExplorerTab = memo(() => {
   const {state} = useStore();
   const font = SF(state.lang);
   
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterClimate, setFilterClimate] = useState("all");
 
   const nodes = useMemo(() => {
     return state.explorerNodes.filter(n => {
-      const matchSearch = n.name.toLowerCase().includes(search.toLowerCase()) || 
-                          n.common.toLowerCase().includes(search.toLowerCase()) ||
-                          n.utility.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = filterStatus === "all" || n.status === filterStatus;
-      const matchClimate = filterClimate === "all" || n.climate === filterClimate;
-      return matchSearch && matchStatus && matchClimate;
+      const matchSearch = n.title.toLowerCase().includes(search.toLowerCase()) || 
+                          n.species.toLowerCase().includes(search.toLowerCase()) ||
+                          n.message.toLowerCase().includes(search.toLowerCase());
+      return matchSearch;
     });
-  }, [state.explorerNodes, search, filterStatus, filterClimate]);
+  }, [state.explorerNodes, search]);
 
   const selectedNode = useMemo(() => 
     state.explorerNodes.find(n => n.id === selectedId)
@@ -539,44 +452,18 @@ const ExplorerTab = memo(() => {
 
   return (
     <div style={{fontFamily:font}}>
-      {/* Search & Filters */}
+      {/* Search */}
       <div className="flex flex-col gap-4 mb-8">
         <div className="relative">
           <input 
             type="text" 
-            placeholder="Search nodes by name, species, or utility..." 
+            placeholder="Search Genesis Covenant by keyword..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full p-4 bg-transparent border outline-none rounded-sm text-sm pl-10"
-            style={{borderColor:C.line, color:C.dew, fontFamily:"inherit"}} 
+            className="w-full p-4 bg-transparent border outline-none rounded-none text-sm pl-10"
+            style={{borderColor: "rgba(255,255,255,0.1)", color:C.dew, fontFamily:"inherit"}} 
           />
-          <span className="absolute left-3 top-3.5 opacity-30">🔍</span>
-        </div>
-        
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          <select 
-            value={filterStatus} 
-            onChange={e => setFilterStatus(e.target.value)}
-            className="p-2 bg-[#0a0a0a] border rounded-sm text-[10px] uppercase tracking-widest outline-none transition-colors"
-            style={{borderColor:C.line, color: filterStatus!=="all" ? C.leaf : "#8c8c8c"}}
-          >
-            <option value="all">Status: All</option>
-            <option value="Mature">Mature</option>
-            <option value="Seedling">Seedling</option>
-            <option value="Regenerating">Regenerating</option>
-          </select>
-
-          <select 
-            value={filterClimate} 
-            onChange={e => setFilterClimate(e.target.value)}
-            className="p-2 bg-[#0a0a0a] border rounded-sm text-[10px] uppercase tracking-widest outline-none transition-colors"
-            style={{borderColor:C.line, color: filterClimate!=="all" ? C.sky : "#8c8c8c"}}
-          >
-            <option value="all">Climate: All</option>
-            <option value="Tropical">Tropical</option>
-            <option value="Temperate">Temperate</option>
-            <option value="Arid">Arid</option>
-          </select>
+          <span className="absolute left-3 top-3.5 opacity-30 text-xs">🔍</span>
         </div>
       </div>
 
@@ -584,26 +471,22 @@ const ExplorerTab = memo(() => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {nodes.map(n => (
           <Card key={n.id} onClick={() => setSelectedId(n.id)} 
-            className="cursor-pointer group hover:border-leaf/40 transition-all duration-300 relative overflow-hidden"
-            style={{borderColor:C.line}}>
+            className="cursor-pointer group hover:border-[#10b981] transition-all duration-300 relative overflow-hidden"
+            style={{borderColor: "rgba(255,255,255,0.08)", background: "#0a0a0a"}}>
             <div className="flex gap-4">
-              <div className="w-16 h-16 rounded-sm border flex items-center justify-center text-3xl shrink-0"
-                style={{background:`${C.leaf}10`, borderColor:`${C.leaf}20`}}>
+              <div className="w-14 h-14 rounded-none border flex items-center justify-center text-3xl shrink-0"
+                style={{background:`rgba(255,255,255,0.03)`, borderColor:`rgba(255,255,255,0.05)`}}>
                 {n.img}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] uppercase tracking-widest font-mono mb-0.5" style={{color:C.mist}}>{n.id}</p>
-                <p className="text-sm font-semibold truncate" style={{color:C.dew}}>{n.common}</p>
-                <p className="text-[10px] italic truncate mb-2" style={{color:"#8c8c8c"}}>{n.species}</p>
-                <div className="flex gap-1.5 items-center">
-                   <Pill color={n.status === "Mature" ? C.usdg : n.status === "Seedling" ? C.leaf : C.red} sm>{n.status}</Pill>
-                   <Pill color={C.mist} sm>{n.climate}</Pill>
-                </div>
+                <p className="text-[9px] uppercase tracking-widest font-mono mb-0.5 opacity-40">NODE {n.id}</p>
+                <p className="text-xs font-bold truncate uppercase tracking-tight" style={{color:C.dew}}>{n.species}</p>
+                <p className="text-[10px] mt-2 leading-relaxed line-clamp-2" style={{color:"#8c8c8c"}}>{n.message}</p>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t flex justify-between items-center" style={{borderColor:"rgba(255,255,255,0.05)"}}>
-               <p className="text-[9px] uppercase tracking-widest" style={{color:"#595959"}}>{n.utility}</p>
-               <span className="text-xs transform group-hover:translate-x-1 transition-transform opacity-30">→</span>
+               <p className="text-[10px] uppercase font-bold tracking-widest" style={{color:C.leaf}}>{n.title.split(' | ')[0]}</p>
+               <span className="text-xs transform group-hover:translate-x-1 transition-transform opacity-30 text-[#10b981]">→</span>
             </div>
           </Card>
         ))}
@@ -622,125 +505,174 @@ const ExplorerTab = memo(() => {
 const NodeDetailView = memo(({node, onBack}) => {
   const {state} = useStore();
   const font = SF(state.lang);
-  const [activeTab, setActiveTab] = useState("covenant");
+  const { zap, loading: zapLoading, error: zapError } = useLightning();
+  const { fetchComments, postComment, user, login } = useNostr();
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [activeTab, setActiveTab] = useState("info");
 
-  const tabs = [
-    {id:"covenant", label:"Covenant"},
-    {id:"botany",   label:"Manual"},
-    {id:"community",label:"Log"},
-  ];
+  useEffect(() => {
+    fetchComments(node.id).then(setComments);
+  }, [node.id, fetchComments]);
+
+  const handleZap = async () => {
+    const success = await zap(1000);
+    if (success) alert("⚡ Zap successful! Nostr event broadcasted.");
+  };
+
+  const handlePostComment = async () => {
+    if (!user) {
+       alert("Please connect Nostr to comment");
+       return;
+    }
+    if (!commentText.trim()) return;
+    setPosting(true);
+    try {
+      await postComment(node.id, commentText);
+      setCommentText("");
+      const updated = await fetchComments(node.id);
+      setComments(updated);
+    } catch (e) {
+      alert("Failed to post: " + e.message);
+    } finally {
+      setPosting(false);
+    }
+  };
 
   return (
     <div style={{fontFamily:font}} className="u1">
-      <button onClick={onBack} className="mb-6 text-[10px] uppercase tracking-[3px] opacity-40 hover:opacity-100 transition-opacity">
-        ← Back to Explorer
+      <button onClick={onBack} className="mb-8 text-[10px] uppercase tracking-[3px] opacity-40 hover:opacity-100 transition-opacity flex items-center gap-2">
+        <span>←</span> BACK TO COVENANT EXPLORER
       </button>
 
-      <div className="flex items-start gap-6 mb-8">
-        <div className="w-24 h-24 rounded-sm border flex items-center justify-center text-5xl shrink-0"
-          style={{background:`${C.leaf}10`, borderColor:`${C.leaf}20`}}>
+      <div className="flex items-start gap-8 mb-12">
+        <div className="w-24 h-24 rounded-none border flex items-center justify-center text-5xl shrink-0"
+          style={{background:`rgba(255,255,255,0.03)`, borderColor:`rgba(255,255,255,0.1)`}}>
           {node.img}
         </div>
         <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-[4px] font-mono mb-1" style={{color:C.leaf}}>{node.id}</p>
-          <p style={{fontFamily:DF, fontSize:28, color:C.dew}}>{node.common}</p>
-          <p className="text-xs italic mb-4" style={{color:"#8c8c8c"}}>{node.species}</p>
+          <p className="text-[10px] uppercase tracking-[4px] font-mono mb-2" style={{color:C.leaf}}>NODE {node.id}</p>
+          <h1 style={{fontFamily:DF, fontSize:32, color:C.dew, lineHeight:1.1, marginBottom:16}}>{node.title}</h1>
           <div className="flex gap-2">
-             <Pill color={C.usdg}>{node.status}</Pill>
-             <Pill color={C.sky}>{node.climate}</Pill>
+            <Pill color={C.usdg}>{node.species}</Pill>
+            <button onClick={handleZap} disabled={zapLoading}
+              className="px-3 py-1 text-[9px] uppercase tracking-widest font-bold border rounded-none transition-all active:scale-95"
+              style={{background:`${C.amber}20`, borderColor:C.amber, color:C.amber}}>
+              {zapLoading ? "⚡..." : "Zap ⚡"}
+            </button>
           </div>
+          {zapError && <p className="text-[8px] text-red-500 mt-2">{zapError}</p>}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-6 border-b mb-8" style={{borderColor:C.line}}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
+      <div className="flex gap-8 border-b mb-8" style={{borderColor:C.line}}>
+        {["info", "community"].map(t => (
+          <button key={t} onClick={() => setActiveTab(t)}
             className="pb-3 text-[10px] uppercase tracking-widest transition-all"
             style={{
-              color: activeTab === t.id ? C.dew : "#595959",
-              borderBottom: activeTab === t.id ? `1px solid ${C.leaf}` : "1px solid transparent",
-              fontWeight: activeTab === t.id ? "700" : "400"
+              color: activeTab === t ? C.dew : "#595959",
+              borderBottom: activeTab === t ? `2px solid ${C.leaf}` : "2px solid transparent",
+              fontWeight: activeTab === t ? "700" : "400"
             }}>
-            {t.label}
+            {t}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
-      <div className="min-h-[400px]">
-        {activeTab === "covenant" && (
-           <div className="u1 space-y-8">
-             <section>
-               <p className="text-[9px] uppercase tracking-[3px] mb-4" style={{color:C.leaf}}>Genesis Covenant</p>
-               <Card className="italic text-sm leading-relaxed" style={{borderColor:`${C.leaf}20`, background:"linear-gradient(to bottom right, rgba(212,175,55,0.03), transparent)"}}>
-                 "{node.covenant}"
-               </Card>
-             </section>
-             
-             <section>
-               <p className="text-[9px] uppercase tracking-[3px] mb-4" style={{color:C.leaf}}>Philosophy</p>
-               <p className="text-lg font-serif italic mb-2" style={{fontFamily:DF, color:C.mist}}>
-                 "{node.genesisQuote}"
-               </p>
-               <p className="text-[10px] opacity-40 uppercase tracking-widest">— Block Zero Anchoring</p>
-             </section>
+      {activeTab === "info" ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="md:col-span-2 space-y-12">
+            <section>
+              <p className="text-[10px] uppercase tracking-[3px] mb-4 opacity-40 font-bold">The Message</p>
+              <p className="text-lg leading-relaxed" style={{color:C.mist}}>{node.message}</p>
+            </section>
 
-             <section className="pt-6 border-t" style={{borderColor:C.line}}>
-               <div className="flex justify-between items-center bg-[#0a0a0a] p-4 rounded-sm border" style={{borderColor:C.line}}>
-                 <div>
-                   <p className="text-[9px] uppercase tracking-[3px] mb-1" style={{color:"#595959"}}>Nostr Identity</p>
-                   <p className="text-[10px] font-mono" style={{color:C.dew}}>{node.pubkey}</p>
+            <section>
+              <p className="text-[10px] uppercase tracking-[3px] mb-4 opacity-40 font-bold">Genesis Covenant / Satoshi Nakamoto</p>
+              <div className="p-8 border-l-2 relative overflow-hidden" 
+                style={{
+                  borderColor: C.leaf, 
+                  background: "rgba(255,255,255,0.02)",
+                }}>
+                <p className="text-xl font-serif italic relative z-10 leading-relaxed mb-4" style={{fontFamily:DF, color:C.dew}}>
+                  "{node.quote.text}"
+                </p>
+                <div className="flex flex-col">
+                  <p className="text-[10px] uppercase tracking-widest font-bold" style={{color:C.leaf}}>— {node.quote.author}</p>
+                  {node.quote.context && (
+                    <p className="text-[9px] mt-1 opacity-40 uppercase tracking-tight">{node.quote.context}</p>
+                  )}
+                </div>
+                <div className="absolute top-0 right-0 p-4 opacity-5 text-6xl">”</div>
+              </div>
+            </section>
+
+            <section>
+              <p className="text-[10px] uppercase tracking-[3px] mb-4 opacity-40 font-bold">The Rationale (Biological-Cryptographic Connection)</p>
+              <p className="text-sm leading-relaxed text-[#a6a6a6]">{node.rationale}</p>
+            </section>
+          </div>
+
+          <div className="space-y-6">
+             <Card className="p-6" style={{borderColor:C.line}}>
+                <p className="text-[9px] uppercase tracking-widest font-bold mb-4" style={{color:C.leaf}}>Network Status</p>
+                <div className="space-y-4">
+                   <div>
+                      <p className="text-[8px] uppercase opacity-40 mb-1">State Verification</p>
+                      <p className="text-xs font-mono" style={{color:C.usdg}}>VERIFIED ON CHAIN</p>
+                   </div>
+                   <div>
+                      <p className="text-[8px] uppercase opacity-40 mb-1">Hash Anchor</p>
+                      <p className="text-[10px] font-mono break-all opacity-60">0000000000000000000{node.id}...</p>
+                   </div>
+                </div>
+             </Card>
+
+             <Btn full onClick={() => alert("Initializing Nostr Key Verification...")}>Verify Node Identity</Btn>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-8">
+           <section>
+              <p className="text-[10px] uppercase tracking-[3px] mb-4 opacity-40 font-bold">Community Growth Log (Nostr)</p>
+              <div className="space-y-4">
+                 {comments.length === 0 ? (
+                    <p className="text-xs opacity-40">No entries yet. Be the first to anchor a thought.</p>
+                 ) : (
+                    comments.map(c => (
+                       <Card key={c.id} className="p-4" style={{borderColor:C.line}}>
+                          <div className="flex items-center gap-2 mb-2">
+                             <div className="w-6 h-6 border flex items-center justify-center text-[10px] opacity-60" style={{borderColor:C.leaf}}>⚡</div>
+                             <p className="text-[10px] font-mono opacity-60">{c.author.npub.slice(0,12)}...</p>
+                          </div>
+                          <p className="text-xs leading-relaxed">{c.content}</p>
+                       </Card>
+                    ))
+                 )}
+              </div>
+           </section>
+
+           <div className="pt-8 border-t" style={{borderColor:C.line}}>
+              {!user ? (
+                 <Btn full onClick={login}>Connect Nostr to Log Progress</Btn>
+              ) : (
+                 <div className="space-y-3">
+                    <textarea 
+                       value={commentText}
+                       onChange={e => setCommentText(e.target.value)}
+                       placeholder="Share your observation on this node..."
+                       className="w-full bg-[#0a0a0a] border p-4 text-xs outline-none rounded-none min-h-[100px]"
+                       style={{borderColor:C.line, color:C.dew}}
+                    />
+                    <Btn onClick={handlePostComment} disabled={posting || !commentText.trim()}>
+                       {posting ? "Anchoring..." : "Publish to Nostr"}
+                    </Btn>
                  </div>
-                 <StorageBadge type="nostr" />
-               </div>
-             </section>
+              )}
            </div>
-        )}
-
-        {activeTab === "botany" && (
-           <div className="u1 space-y-8">
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {Object.entries(node.characteristics).map(([k,v]) => (
-                   <Card key={k} className="text-center p-4">
-                      <p className="text-[9px] uppercase tracking-widest mb-1" style={{color:"#595959"}}>{k}</p>
-                      <p className="text-xs font-semibold" style={{color:C.dew}}>{v}</p>
-                   </Card>
-                ))}
-             </div>
-
-             <section>
-               <p className="text-[9px] uppercase tracking-[3px] mb-3" style={{color:C.leaf}}>Gardening Tips (Fukuoka Style)</p>
-               <p className="text-xs leading-relaxed" style={{color:"#e0e0e0"}}>{node.tips}</p>
-             </section>
-
-             <section>
-               <p className="text-[9px] uppercase tracking-[3px] mb-3" style={{color:C.leaf}}>Use Cases</p>
-               <div className="flex gap-2 flex-wrap">
-                 {node.useCases.map(u => <Pill key={u} color={C.sky}>{u}</Pill>)}
-               </div>
-             </section>
-
-             <section>
-               <p className="text-[9px] uppercase tracking-[3px] mb-3" style={{color:C.leaf}}>Companion Planting</p>
-               <div className="flex gap-2 flex-wrap">
-                 {node.companions.map(c => <Pill key={c} color={C.usdg}>{c}</Pill>)}
-               </div>
-             </section>
-           </div>
-        )}
-
-        {activeTab === "community" && (
-           <div className="u1 text-center py-12">
-             <p className="text-3xl mb-4">⚡</p>
-             <p className="text-xs mb-8" style={{color:"#8c8c8c"}}>Nostr Growth Log coming soon.</p>
-             
-             <div className="max-w-xs mx-auto">
-                <Btn full onClick={() => alert("Initializing Lightning Zap...")}>Zap Operator ⚡</Btn>
-             </div>
-           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 });
@@ -818,18 +750,18 @@ const FeedTab = memo(() => {
       <Card className="mb-4" style={{borderColor:`${C.leaf}28`}}>
         <textarea value={content} onChange={e=>setContent(e.target.value)} disabled={mediaLoading}
           placeholder="Update your node's status... What does this nature mean to you?"
-          rows={3} className="w-full p-2.5 rounded-sm text-xs outline-none resize-none mb-3"
+          rows={3} className="w-full p-2.5 rounded-none text-xs outline-none resize-none mb-3"
           style={{background:"rgba(255,255,255,0.05)",border:`1px solid ${C.leaf}20`,color:C.dew,fontFamily:"inherit"}}/>
         
         {/* MEDIA PREVIEWS */}
         {imageSrc && (
           <div className="relative mb-3 inline-block w-full">
             <img src={imageSrc} style={{maxHeight: "300px", width: "100%", objectFit: "cover", borderRadius: "4px"}} />
-            {!mediaLoading && <button className="absolute top-2 right-2 bg-black bg-opacity-70 text-white rounded-sm w-7 h-7 flex items-center justify-center text-xs cursor-pointer border-none" onClick={() => setImageSrc(null)}>✕</button>}
+            {!mediaLoading && <button className="absolute top-2 right-2 bg-black bg-opacity-70 text-white rounded-none w-7 h-7 flex items-center justify-center text-xs cursor-pointer border-none" onClick={() => setImageSrc(null)}>✕</button>}
           </div>
         )}
         {audioSrc && (
-            <div className="relative mb-3 flex items-center gap-3 bg-[#0a0a0a] border rounded-sm p-3 w-full" style={{borderColor:C.line}}>
+            <div className="relative mb-3 flex items-center gap-3 bg-[#0a0a0a] border rounded-none p-3 w-full" style={{borderColor:C.line}}>
               <span style={{fontSize: 20}}>🎤</span>
               <audio controls src={audioSrc} className="flex-1 h-8" style={{outline: "none"}} />
               {!mediaLoading && <button className="text-[10px] uppercase tracking-widest font-semibold p-1 cursor-pointer bg-transparent border-none" style={{color:C.red}} onClick={() => setAudioSrc(null)}>✕</button>}
@@ -868,13 +800,13 @@ const FeedTab = memo(() => {
         <Card key={p.id} className="relative"
           style={{opacity:p.reports>=3?"0.6":1}}>
           {p.reports>=3&&(
-            <div className="absolute inset-0 rounded-sm flex items-center justify-center"
+            <div className="absolute inset-0 rounded-none flex items-center justify-center"
               style={{background:"rgba(0,0,0,0.5)",zIndex:2}}>
               <p className="text-xs" style={{color:C.red}}>⚠ Under community review ({p.reports} reports)</p>
             </div>
           )}
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-sm flex items-center justify-center text-base border"
+            <div className="w-8 h-8 rounded-none flex items-center justify-center text-base border"
               style={{background:`${C.leaf}10`,borderColor:`${C.leaf}22`}}>{p.img}</div>
             <div className="flex-1">
               <p className="text-xs font-semibold" style={{color:C.dew}}>{p.author}</p>
@@ -883,7 +815,7 @@ const FeedTab = memo(() => {
             <div className="flex gap-1 items-center">
               <StorageBadge type={p.storage||"ipfs"}/>
               <button onClick={()=>setReportMenu(reportMenu===p.id?null:p.id)}
-                className="w-6 h-6 rounded-sm flex items-center justify-center text-sm cursor-pointer border"
+                className="w-6 h-6 rounded-none flex items-center justify-center text-sm cursor-pointer border"
                 style={{background:"transparent",borderColor:"rgba(255,255,255,0.06)",color:"#595959"}}>
                 ⋮
               </button>
@@ -891,13 +823,13 @@ const FeedTab = memo(() => {
           </div>
 
           {reportMenu===p.id&&(
-            <div className="absolute right-3 top-10 rounded-sm border p-2 z-10 w-44"
+            <div className="absolute right-3 top-10 rounded-none border p-2 z-10 w-44"
               style={{background:"#0d100d",borderColor:`${C.red}30`}}>
               <p className="text-[9px] uppercase tracking-widest px-2 pb-1 mb-1 border-b"
                 style={{color:C.red,borderColor:`${C.red}20`}}>Report Post</p>
               {REPORT_REASONS.map(r=>(
                 <button key={r} onClick={()=>doReport(p,r)}
-                  className="w-full text-left py-1.5 px-2 rounded-sm text-xs cursor-pointer"
+                  className="w-full text-left py-1.5 px-2 rounded-none text-xs cursor-pointer"
                   style={{background:"transparent",border:"none",color:"#e0e0e0",fontFamily:"inherit"}}>
                   {r}
                 </button>
@@ -907,10 +839,10 @@ const FeedTab = memo(() => {
 
           <p className="text-xs leading-relaxed mb-3" style={{color:"#e0e0e0", whiteSpace:"pre-wrap"}}>{p.content}</p>
           {p.imageStr && (
-             <img src={p.imageStr} className="w-full rounded-sm mb-3 border" style={{borderColor:C.line, objectFit:"cover", maxHeight:"300px"}} />
+             <img src={p.imageStr} className="w-full rounded-none mb-3 border" style={{borderColor:C.line, objectFit:"cover", maxHeight:"300px"}} />
           )}
           {p.audioStr && (
-             <audio controls src={p.audioStr} className="w-full h-8 mb-3" style={{borderRadius:"4px", outline:"none"}} />
+             <audio controls src={p.audioStr} className="w-full h-8 mb-3" style={{borderRadius:"0px", outline:"none"}} />
           )}
 
           <div className="flex items-center gap-1.5 mb-3 flex-wrap">
@@ -985,14 +917,14 @@ const MarketTab = memo(() => {
             }}>Harvest</button>
         </div>
         <button onClick={() => setShowCreate(true)} 
-          className="px-4 py-2 rounded-sm text-[10px] uppercase tracking-widest font-bold border transition-colors"
+          className="px-4 py-2 rounded-none text-[10px] uppercase tracking-widest font-bold border transition-colors"
           style={{borderColor:C.leaf, color:C.leaf, background:"transparent"}}>
           + Create Listing
         </button>
       </div>
 
       {msgStatus && (
-        <div className="mb-4 p-3 rounded-sm border text-[10px] uppercase tracking-widest text-center animate-pulse"
+        <div className="mb-4 p-3 rounded-none border text-[10px] uppercase tracking-widest text-center animate-pulse"
           style={{borderColor:C.usdg, background:`${C.usdg}10`, color:C.usdg}}>
           {msgStatus}
         </div>
@@ -1038,7 +970,7 @@ const MarketTab = memo(() => {
                      <p className="text-[8px] font-mono" style={{color:C.amber}}>{usdgToSats(s.price)} SATS</p>
                    </div>
                    <button onClick={() => handleMessage(s.owner)}
-                     className="px-3 py-2 rounded-sm border flex items-center gap-2 text-[10px] uppercase tracking-widest font-semibold cursor-pointer transition-colors hover:bg-opacity-10"
+                     className="px-3 py-2 rounded-none border flex items-center gap-2 text-[10px] uppercase tracking-widest font-semibold cursor-pointer transition-colors hover:bg-opacity-10"
                      style={{borderColor:C.line, background:C.ghost, color:C.dew}}>
                      <span>🔒</span> Encrypted Message
                    </button>
@@ -1070,7 +1002,7 @@ const MarketTab = memo(() => {
                       <p className="text-[8px] font-mono" style={{color:C.amber}}>{usdgToSats(h.price)} SATS</p>
                     </div>
                     <button onClick={() => handleMessage(h.host)}
-                      className="px-3 py-2 rounded-sm border flex items-center gap-2 text-[10px] uppercase tracking-widest font-semibold cursor-pointer"
+                      className="px-3 py-2 rounded-none border flex items-center gap-2 text-[10px] uppercase tracking-widest font-semibold cursor-pointer"
                       style={{borderColor:C.line, background:C.ghost, color:C.dew}}>
                       <span>🔒</span> Message
                     </button>
@@ -1183,7 +1115,7 @@ const DAOTab = memo(() => {
                   <span style={{color:C.mist}}>Vetting Progress</span>
                   <span style={{color:C.dew}}>{p.vouches} / {p.required} Vouches</span>
                 </div>
-                <div className="h-1 rounded-full overflow-hidden" style={{background:C.ghost}}>
+                <div className="h-1 rounded-none overflow-hidden" style={{background:C.ghost}}>
                    <div className="h-full transition-all duration-700" style={{width: `${progress}%`, background: C.leaf}} />
                 </div>
               </div>
@@ -1192,7 +1124,7 @@ const DAOTab = memo(() => {
                 <button 
                   disabled={!!isVoted}
                   onClick={() => handleVouch(p.id)}
-                  className="flex-1 py-2 rounded-sm border text-[10px] uppercase tracking-widest font-bold transition-all disabled:opacity-50"
+                  className="flex-1 py-2 rounded-none border text-[10px] uppercase tracking-widest font-bold transition-all disabled:opacity-50"
                   style={{
                     borderColor: isVoted === "vouched" ? C.leaf : C.line, 
                     background: isVoted === "vouched" ? `${C.leaf}20` : "transparent",
@@ -1205,13 +1137,13 @@ const DAOTab = memo(() => {
                 {!isVoted ? (
                   <button 
                     onClick={() => handleReject(p.id)}
-                    className="px-4 py-2 rounded-sm border text-[10px] uppercase tracking-widest font-bold transition-all"
+                    className="px-4 py-2 rounded-none border text-[10px] uppercase tracking-widest font-bold transition-all"
                     style={{borderColor: C.red, background: "transparent", color: C.red, cursor: "pointer"}}
                   >
                     👎 Reject
                   </button>
                 ) : isVoted === "rejected" && (
-                   <div className="flex-1 py-2 rounded-sm border text-[10px] uppercase tracking-widest font-bold text-center"
+                   <div className="flex-1 py-2 rounded-none border text-[10px] uppercase tracking-widest font-bold text-center"
                      style={{borderColor: C.red, background: `${C.red}10`, color: C.red}}>
                      Rejected
                    </div>
@@ -1286,7 +1218,7 @@ const USDGTab = memo(() => {
             </div>
             <div>
               <p className="text-[9px] uppercase tracking-widest mb-2 px-1" style={{color:C.usdg}}>Desired USDG Amount</p>
-              <div className="flex items-center border rounded-sm" style={{borderColor:C.line, background:"#050505"}}>
+              <div className="flex items-center border rounded-none" style={{borderColor:C.line, background:"#050505"}}>
                 <input value={amount} onChange={e=>setAmount(e.target.value)} type="number" placeholder="0.00"
                   className="flex-1 p-3.5 text-sm bg-transparent outline-none" style={{color:C.dew,fontFamily:"inherit"}}/>
                 <div className="px-4 text-[10px] uppercase tracking-widest font-bold" style={{color:"#8c8c8c"}}>USDG</div>
@@ -1307,13 +1239,13 @@ const USDGTab = memo(() => {
 
         {step >= 2 && step <= 3 && (
           <div className="flex flex-col gap-6 u1">
-            <div className="border border-dashed p-5 rounded-sm" style={{borderColor:C.line, background:"rgba(255,255,255,0.02)"}}>
+            <div className="border border-dashed p-5 rounded-none" style={{borderColor:C.line, background:"rgba(255,255,255,0.02)"}}>
               <p className="text-[9px] tracking-widest uppercase mb-2" style={{color:C.mist}}>Proof of Nature Hash</p>
               <p className="text-xs font-mono break-all" style={{color:C.usdg}}>{merkle}</p>
               <p className="text-[8px] mt-1.5 uppercase" style={{color:"#8c8c8c"}}>Verified via IPFS/Nostr network</p>
             </div>
             
-            <div className="border border-solid p-5 rounded-sm" style={{borderColor:C.line, background:"#050505"}}>
+            <div className="border border-solid p-5 rounded-none" style={{borderColor:C.line, background:"#050505"}}>
               <p className="text-[9px] tracking-widest uppercase mb-4 text-center" style={{color:C.amber}}>The Mimosa Mechanism</p>
               <div className="flex justify-between items-center mb-3">
                 <p className="text-[10px]" style={{color:"#8c8c8c"}}>Ecosystem State</p>
@@ -1344,7 +1276,7 @@ const USDGTab = memo(() => {
 
         {step === 4 && (
           <div className="flex flex-col items-center py-8 u1 text-center">
-            <div className="w-14 h-14 rounded-sm border flex items-center justify-center mb-5" style={{borderColor:C.usdg}}>
+            <div className="w-14 h-14 rounded-none border flex items-center justify-center mb-5" style={{borderColor:C.usdg}}>
               <span style={{fontSize:24, color:C.usdg}}>✓</span>
             </div>
             <p className="text-[12px] tracking-widest uppercase mb-2" style={{color:C.dew}}>Covenant Sealed</p>
@@ -1369,12 +1301,12 @@ const USDGTab = memo(() => {
       {/* Balances below the engine */}
       {state.wallet&&(
         <div className="flex gap-3">
-          <div className="flex-1 border rounded-sm p-5 text-center" style={{borderColor:C.line, background:C.ghost}}>
-            <p className="text-[9px] tracking-widest uppercase mb-1.5" style={{color:C.mist}}>Your USDG</p>
+          <div className="flex-1 border rounded-none p-5 text-center" style={{borderColor:C.line, background:C.ghost}}>
+            <p className="text-[9px] tracking-widest uppercase font-bold mb-1.5" style={{color:C.mist}}>Your USDG</p>
             <p style={{fontFamily:DF,fontSize:24,color:C.usdg}}>{state.wallet.usdg||0}</p>
           </div>
-          <div className="flex-1 border rounded-sm p-5 text-center" style={{borderColor:C.line, background:C.ghost}}>
-            <p className="text-[9px] tracking-widest uppercase mb-1.5" style={{color:C.mist}}>Est. Impact</p>
+          <div className="flex-1 border rounded-none p-5 text-center" style={{borderColor:C.line, background:C.ghost}}>
+            <p className="text-[9px] tracking-widest uppercase font-bold mb-1.5" style={{color:C.mist}}>Est. Impact</p>
             <p style={{fontFamily:DF,fontSize:24,color:C.leaf}}>{(state.wallet.usdg/1000).toFixed(3)}t <span className="text-[10px]">CO₂</span></p>
           </div>
         </div>
@@ -1416,7 +1348,7 @@ const StorageInfo = memo(() => {
       ].map(s=>(
         <Card key={s.name} className="mb-3" style={{borderColor:`${s.color}25`}}>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center text-xl border"
+            <div className="w-10 h-10 rounded-none flex items-center justify-center text-xl border"
               style={{background:`${s.color}12`,borderColor:`${s.color}30`,fontFamily:"monospace"}}>{s.icon}</div>
             <div>
               <p className="text-sm font-semibold" style={{color:s.color}}>{s.name}</p>
@@ -1446,7 +1378,7 @@ const ProfileTab = memo(({onDisconnect}) => {
     <div style={{fontFamily:font}}>
       <Card className="mb-3" style={{background:"linear-gradient(to bottom right, rgba(212,175,55,0.08), transparent)",borderColor:`${C.leaf}22`}}>
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-sm flex items-center justify-center text-2xl border"
+          <div className="w-12 h-12 rounded-none flex items-center justify-center text-2xl border"
             style={{background:`${C.leaf}12`,borderColor:`${C.leaf}30`}}>🌿</div>
           <div>
             <p style={{fontFamily:DF,fontSize:16,color:"#ffffff"}}>Green Weave Member</p>
@@ -1460,7 +1392,7 @@ const ProfileTab = memo(({onDisconnect}) => {
             {v:state.wallet?.carbon||0,l:"CO₂ t",  c:C.sky},
             {v:"Bitcoin",               l:"Chain",  c:C.amber},
           ].map((s,i)=>(
-            <div key={i} className="text-center rounded-sm py-2"
+            <div key={i} className="text-center rounded-none py-2"
               style={{background:`${s.c}08`}}>
               <p className="text-sm font-semibold" style={{color:s.c}}>{s.v}</p>
               <p className="text-[8px]" style={{color:"#8c8c8c"}}>{s.l}</p>
@@ -1514,7 +1446,7 @@ const ProfileTab = memo(({onDisconnect}) => {
       </Card>
 
       <button onClick={onDisconnect}
-        className="w-full mt-3 py-2.5 rounded-sm text-xs border cursor-pointer"
+        className="w-full mt-3 py-2.5 rounded-none text-xs border cursor-pointer font-bold"
         style={{background:"transparent",borderColor:"rgba(255,255,255,0.07)",color:"#595959",fontFamily:"inherit"}}>
         Disconnect wallet
       </button>
@@ -1538,6 +1470,7 @@ function AppShell() {
   const font = SF(state.lang);
   const [tab,setTab] = useState("feed");
   const [connected,setConnected] = useState(false);
+  const { user, profile, login: loginNostr, loading: nostrLoading } = useNostr();
 
   const connect    = useCallback(w=>{dispatch({type:"CONNECT",payload:w});setConnected(true);},[dispatch]);
   const disconnect = useCallback(()=>{dispatch({type:"DISCONNECT"});setConnected(false);setTab("feed");},[dispatch]);
@@ -1569,8 +1502,25 @@ function AppShell() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {!user ? (
+               <button onClick={loginNostr} disabled={nostrLoading}
+                 className="px-3 py-1.5 text-[9px] uppercase tracking-[2px] font-bold border rounded-none hover:bg-white/5"
+                 style={{borderColor:C.line, color:C.leaf}}>
+                 {nostrLoading ? "CONNECTING..." : "CONNECT NOSTR"}
+               </button>
+            ) : (
+               <div className="flex items-center gap-3 px-3 py-1.5 border" style={{borderColor:C.line, background:C.ghost}}>
+                  <div className="w-5 h-5 overflow-hidden border" style={{borderColor:C.leaf}}>
+                     <img src={profile?.image || `https://robohash.org/${user.pubkey}`} className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-[9px] uppercase tracking-widest font-bold" style={{color:C.leaf}}>
+                     {profile?.name || user.npub.slice(0,8)}
+                  </p>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981]"></div>
+               </div>
+            )}
             {state.wallet&&(
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm border"
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-none border"
                 style={{borderColor:C.line,background:C.ghost}}>
                 <span className="text-[10px] font-mono" style={{color:C.usdg}}>
                   {state.wallet.usdg||0} 
