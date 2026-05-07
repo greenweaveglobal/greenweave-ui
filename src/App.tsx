@@ -513,8 +513,8 @@ const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLog
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-md border-2 bg-neutral-900 p-6 relative max-h-[90vh] overflow-y-auto" style={{borderColor:C.line}}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 sm:p-6 backdrop-blur-sm">
+      <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-neutral-950 border-2 border-neutral-700 p-6 overscroll-contain flex flex-col relative" style={{borderColor:C.line}}>
         <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-10">×</button>
         
         <h2 style={{fontFamily:DF, fontSize:24, color:C.leaf, marginBottom:24, letterSpacing:2}}>CONNECT WALLET</h2>
@@ -650,8 +650,8 @@ const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-md border-2 bg-neutral-900 p-6 relative max-h-[90vh] overflow-y-auto" style={{borderColor:C.line}}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 sm:p-6 backdrop-blur-sm">
+      <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-neutral-950 border-2 border-neutral-700 p-6 overscroll-contain flex flex-col relative" style={{borderColor:C.line}}>
         <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-10">×</button>
         <h2 style={{fontFamily:DF, fontSize:24, color:C.amber, marginBottom:24, letterSpacing:2}}>LIGHTNING SETUP</h2>
         
@@ -1569,9 +1569,8 @@ const StorageInfo = memo(() => {
 });
 
 // ─── PROFILE / WALLET ─────────────────────────────────────────
-const ProfileTab = memo(({onDisconnect}) => {
+const ProfileTab = memo(({onDisconnect, user, profile}) => {
   const {state} = useStore();
-  const { user, profile } = useNostr();
   const font = SF(state.lang);
   const [copied, setCopied] = useState(false);
 
@@ -1604,7 +1603,7 @@ const ProfileTab = memo(({onDisconnect}) => {
           </div>
           <div className="flex-1 min-w-0">
             <h2 style={{fontFamily:DF,fontSize:20,color:"#ffffff",lineHeight:1.1}} className="mb-1">
-              {profile?.name || "Green Weave Scout"}
+              {profile?.name || (user?.npub ? `${user.npub.slice(0, 12)}...` : "Green Weave Scout")}
             </h2>
             <div className="flex items-center gap-2 mb-2">
               <p className="text-[10px] font-mono opacity-50 truncate">
@@ -1707,8 +1706,8 @@ function AppShell() {
     dao:     <DAOTab/>,
     usdg:    <USDGTab/>,
     storage: <StorageInfo/>,
-    me:      <ProfileTab onDisconnect={disconnect}/>,
-  }),[disconnect]);
+    me:      <ProfileTab onDisconnect={disconnect} user={user} profile={profile}/>,
+  }),[disconnect, user, profile]);
 
   if(!connected) return <ConnectGate onConnect={connect}/>;
 
