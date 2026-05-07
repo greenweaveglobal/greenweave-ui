@@ -100,6 +100,93 @@ const INIT = {
     { id:"n3", name:"Binh Phuoc Forest",  owner:"Hoa",  city:"Binh Phuoc", ha:5,   status:"building", members:3,  carbonPerYear:12,  stayEnabled:true  },
     { id:"n4", name:"Osaka Bamboo Grove", owner:"Yuki", city:"Osaka",      ha:0.05,status:"active",   members:5,  carbonPerYear:0.8, stayEnabled:false },
   ],
+  explorerNodes: [
+    { 
+      id: "BWN000", 
+      name: "Musa acuminata", 
+      common: "Wild Banana", 
+      species: "Musa acuminata",
+      status: "Mature",
+      climate: "Tropical",
+      utility: "Carbon sink / Biomass",
+      img: "🍌",
+      covenant: "The banana is the first of the covenant. Like Bitcoin, it starts with a single seed but grows into a massive network of clones (suckers). It is the proof of nature's scalability.",
+      genesisQuote: "Nature's proof of work is the growth of the canopy.",
+      characteristics: { growth: "Fast", light: "Full Sun", water: "High" },
+      tips: "Fukuoka method: Mulch heavily with organic matter. Do not clear-cut the stalks after harvest; let them return to the soil.",
+      useCases: ["Carbon sequestration", "Soil regeneration", "Food security"],
+      companions: ["Papaya", "Sweet Potato", "Coffee"],
+      pubkey: "npub1satoshi00deadbeef..."
+    },
+    { 
+      id: "BWN001", 
+      name: "Bambuseae", 
+      common: "Giant Bamboo", 
+      species: "Bambusa vulgaris",
+      status: "Seedling",
+      climate: "Tropical",
+      utility: "Structural / Fiber",
+      img: "🎋",
+      covenant: "Bamboo is the resilient network. It waits underneath, building a massive root system before exploding upward. It is the architectural foundation of the green economy.",
+      genesisQuote: "Wait for the root system to be ready before the growth happens.",
+      characteristics: { growth: "Hyper-fast", light: "Partial Sun", water: "Medium" },
+      tips: "No-till: Plant into undisturbed soil. Use as a windbreak for more delicate nodes.",
+      useCases: ["Sustainable building", "Plastic alternative", "Erosion control"],
+      companions: ["Beans", "Lemongrass"],
+      pubkey: "npub1roots..."
+    },
+    { 
+      id: "BWN002", 
+      name: "Fungi", 
+      common: "Reishi", 
+      species: "Ganoderma lucidum",
+      status: "Regenerating",
+      climate: "Temperate",
+      utility: "Medicinal / Decomposition",
+      img: "🍄",
+      covenant: "The mycelium is the true decentralized protocol. It moves information and nutrients across different species without a central hub. It is the internet of the forest.",
+      genesisQuote: "Decentralized consensus through nutrient exchange.",
+      characteristics: { growth: "Medium", light: "Low", water: "High" },
+      tips: "Log inoculation: Drill holes into hardwood logs. Keep in moist, shaded areas.",
+      useCases: ["Health tonic", "Soil breakdown", "Immunity anchoring"],
+      companions: ["Oak", "Maple"],
+      pubkey: "npub1mycelium..."
+    },
+    { 
+      id: "BWN003", 
+      name: "Chlorella", 
+      common: "Green Algae", 
+      species: "Chlorella vulgaris",
+      status: "Mature",
+      climate: "Arid",
+      utility: "Oxygen / Bio-fuel",
+      img: "🧪",
+      covenant: "Algae is the liquid sunshine. It captures energy with extreme efficiency, reminding us that the most powerful protocols are often the simplest and most widespread.",
+      genesisQuote: "Simplicity is the ultimate scale.",
+      characteristics: { growth: "Instant", light: "High", water: "Aquatic" },
+      tips: "Bioreactor: Use clear containers to maximize light penetration. Supplement with CO2 if available.",
+      useCases: ["Oxygen production", "High-protein supplement", "Water purification"],
+      companions: ["Azolla", "Fish"],
+      pubkey: "npub1algae..."
+    },
+    { 
+      id: "BWN004", 
+      name: "Quercus", 
+      common: "Ancient Oak", 
+      species: "Quercus robur",
+      status: "Mature",
+      climate: "Temperate",
+      utility: "Keystone Species",
+      img: "🌳",
+      covenant: "The Oak is the block explorer. It records the history of the seasons in its rings, providing a permanent immutable record of the climate for centuries.",
+      genesisQuote: "Deep roots, slow blocks, eternal presence.",
+      characteristics: { growth: "Slow", light: "Full Sun", water: "Medium" },
+      tips: "Patience: Protection from herbivores is critical in the first 5 years. Do not move once planted.",
+      useCases: ["Habitat creation", "Timber legacy", "Acorn harvest"],
+      companions: ["Truffles", "Hazelnut"],
+      pubkey: "npub1oak..."
+    }
+  ]
 };
 
 function reducer(s, a) {
@@ -421,7 +508,243 @@ Node: ${nodeName}`
   );
 });
 
-// ─── FEED with MODERATION ─────────────────────────────────────
+// ─── EXPLORER TAB (GARDENING MANUAL) ────────────────────────
+const ExplorerTab = memo(() => {
+  const {state} = useStore();
+  const font = SF(state.lang);
+  
+  const [selectedId, setSelectedId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterClimate, setFilterClimate] = useState("all");
+
+  const nodes = useMemo(() => {
+    return state.explorerNodes.filter(n => {
+      const matchSearch = n.name.toLowerCase().includes(search.toLowerCase()) || 
+                          n.common.toLowerCase().includes(search.toLowerCase()) ||
+                          n.utility.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = filterStatus === "all" || n.status === filterStatus;
+      const matchClimate = filterClimate === "all" || n.climate === filterClimate;
+      return matchSearch && matchStatus && matchClimate;
+    });
+  }, [state.explorerNodes, search, filterStatus, filterClimate]);
+
+  const selectedNode = useMemo(() => 
+    state.explorerNodes.find(n => n.id === selectedId)
+  , [state.explorerNodes, selectedId]);
+
+  if (selectedId && selectedNode) {
+    return <NodeDetailView node={selectedNode} onBack={() => setSelectedId(null)} />;
+  }
+
+  return (
+    <div style={{fontFamily:font}}>
+      {/* Search & Filters */}
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="relative">
+          <input 
+            type="text" 
+            placeholder="Search nodes by name, species, or utility..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full p-4 bg-transparent border outline-none rounded-sm text-sm pl-10"
+            style={{borderColor:C.line, color:C.dew, fontFamily:"inherit"}} 
+          />
+          <span className="absolute left-3 top-3.5 opacity-30">🔍</span>
+        </div>
+        
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+          <select 
+            value={filterStatus} 
+            onChange={e => setFilterStatus(e.target.value)}
+            className="p-2 bg-[#0a0a0a] border rounded-sm text-[10px] uppercase tracking-widest outline-none transition-colors"
+            style={{borderColor:C.line, color: filterStatus!=="all" ? C.leaf : "#8c8c8c"}}
+          >
+            <option value="all">Status: All</option>
+            <option value="Mature">Mature</option>
+            <option value="Seedling">Seedling</option>
+            <option value="Regenerating">Regenerating</option>
+          </select>
+
+          <select 
+            value={filterClimate} 
+            onChange={e => setFilterClimate(e.target.value)}
+            className="p-2 bg-[#0a0a0a] border rounded-sm text-[10px] uppercase tracking-widest outline-none transition-colors"
+            style={{borderColor:C.line, color: filterClimate!=="all" ? C.sky : "#8c8c8c"}}
+          >
+            <option value="all">Climate: All</option>
+            <option value="Tropical">Tropical</option>
+            <option value="Temperate">Temperate</option>
+            <option value="Arid">Arid</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {nodes.map(n => (
+          <Card key={n.id} onClick={() => setSelectedId(n.id)} 
+            className="cursor-pointer group hover:border-leaf/40 transition-all duration-300 relative overflow-hidden"
+            style={{borderColor:C.line}}>
+            <div className="flex gap-4">
+              <div className="w-16 h-16 rounded-sm border flex items-center justify-center text-3xl shrink-0"
+                style={{background:`${C.leaf}10`, borderColor:`${C.leaf}20`}}>
+                {n.img}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] uppercase tracking-widest font-mono mb-0.5" style={{color:C.mist}}>{n.id}</p>
+                <p className="text-sm font-semibold truncate" style={{color:C.dew}}>{n.common}</p>
+                <p className="text-[10px] italic truncate mb-2" style={{color:"#8c8c8c"}}>{n.species}</p>
+                <div className="flex gap-1.5 items-center">
+                   <Pill color={n.status === "Mature" ? C.usdg : n.status === "Seedling" ? C.leaf : C.red} sm>{n.status}</Pill>
+                   <Pill color={C.mist} sm>{n.climate}</Pill>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t flex justify-between items-center" style={{borderColor:"rgba(255,255,255,0.05)"}}>
+               <p className="text-[9px] uppercase tracking-widest" style={{color:"#595959"}}>{n.utility}</p>
+               <span className="text-xs transform group-hover:translate-x-1 transition-transform opacity-30">→</span>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {nodes.length === 0 && (
+         <div className="py-20 text-center">
+           <p className="text-xs" style={{color:"#595959"}}>No nodes found in the current covenant manual.</p>
+         </div>
+      )}
+    </div>
+  );
+});
+
+// ─── NODE DETAIL VIEW ─────────────────────────────────────────
+const NodeDetailView = memo(({node, onBack}) => {
+  const {state} = useStore();
+  const font = SF(state.lang);
+  const [activeTab, setActiveTab] = useState("covenant");
+
+  const tabs = [
+    {id:"covenant", label:"Covenant"},
+    {id:"botany",   label:"Manual"},
+    {id:"community",label:"Log"},
+  ];
+
+  return (
+    <div style={{fontFamily:font}} className="u1">
+      <button onClick={onBack} className="mb-6 text-[10px] uppercase tracking-[3px] opacity-40 hover:opacity-100 transition-opacity">
+        ← Back to Explorer
+      </button>
+
+      <div className="flex items-start gap-6 mb-8">
+        <div className="w-24 h-24 rounded-sm border flex items-center justify-center text-5xl shrink-0"
+          style={{background:`${C.leaf}10`, borderColor:`${C.leaf}20`}}>
+          {node.img}
+        </div>
+        <div className="flex-1">
+          <p className="text-[10px] uppercase tracking-[4px] font-mono mb-1" style={{color:C.leaf}}>{node.id}</p>
+          <p style={{fontFamily:DF, fontSize:28, color:C.dew}}>{node.common}</p>
+          <p className="text-xs italic mb-4" style={{color:"#8c8c8c"}}>{node.species}</p>
+          <div className="flex gap-2">
+             <Pill color={C.usdg}>{node.status}</Pill>
+             <Pill color={C.sky}>{node.climate}</Pill>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-6 border-b mb-8" style={{borderColor:C.line}}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            className="pb-3 text-[10px] uppercase tracking-widest transition-all"
+            style={{
+              color: activeTab === t.id ? C.dew : "#595959",
+              borderBottom: activeTab === t.id ? `1px solid ${C.leaf}` : "1px solid transparent",
+              fontWeight: activeTab === t.id ? "700" : "400"
+            }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="min-h-[400px]">
+        {activeTab === "covenant" && (
+           <div className="u1 space-y-8">
+             <section>
+               <p className="text-[9px] uppercase tracking-[3px] mb-4" style={{color:C.leaf}}>Genesis Covenant</p>
+               <Card className="italic text-sm leading-relaxed" style={{borderColor:`${C.leaf}20`, background:"linear-gradient(to bottom right, rgba(212,175,55,0.03), transparent)"}}>
+                 "{node.covenant}"
+               </Card>
+             </section>
+             
+             <section>
+               <p className="text-[9px] uppercase tracking-[3px] mb-4" style={{color:C.leaf}}>Philosophy</p>
+               <p className="text-lg font-serif italic mb-2" style={{fontFamily:DF, color:C.mist}}>
+                 "{node.genesisQuote}"
+               </p>
+               <p className="text-[10px] opacity-40 uppercase tracking-widest">— Block Zero Anchoring</p>
+             </section>
+
+             <section className="pt-6 border-t" style={{borderColor:C.line}}>
+               <div className="flex justify-between items-center bg-[#0a0a0a] p-4 rounded-sm border" style={{borderColor:C.line}}>
+                 <div>
+                   <p className="text-[9px] uppercase tracking-[3px] mb-1" style={{color:"#595959"}}>Nostr Identity</p>
+                   <p className="text-[10px] font-mono" style={{color:C.dew}}>{node.pubkey}</p>
+                 </div>
+                 <StorageBadge type="nostr" />
+               </div>
+             </section>
+           </div>
+        )}
+
+        {activeTab === "botany" && (
+           <div className="u1 space-y-8">
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {Object.entries(node.characteristics).map(([k,v]) => (
+                   <Card key={k} className="text-center p-4">
+                      <p className="text-[9px] uppercase tracking-widest mb-1" style={{color:"#595959"}}>{k}</p>
+                      <p className="text-xs font-semibold" style={{color:C.dew}}>{v}</p>
+                   </Card>
+                ))}
+             </div>
+
+             <section>
+               <p className="text-[9px] uppercase tracking-[3px] mb-3" style={{color:C.leaf}}>Gardening Tips (Fukuoka Style)</p>
+               <p className="text-xs leading-relaxed" style={{color:"#e0e0e0"}}>{node.tips}</p>
+             </section>
+
+             <section>
+               <p className="text-[9px] uppercase tracking-[3px] mb-3" style={{color:C.leaf}}>Use Cases</p>
+               <div className="flex gap-2 flex-wrap">
+                 {node.useCases.map(u => <Pill key={u} color={C.sky}>{u}</Pill>)}
+               </div>
+             </section>
+
+             <section>
+               <p className="text-[9px] uppercase tracking-[3px] mb-3" style={{color:C.leaf}}>Companion Planting</p>
+               <div className="flex gap-2 flex-wrap">
+                 {node.companions.map(c => <Pill key={c} color={C.usdg}>{c}</Pill>)}
+               </div>
+             </section>
+           </div>
+        )}
+
+        {activeTab === "community" && (
+           <div className="u1 text-center py-12">
+             <p className="text-3xl mb-4">⚡</p>
+             <p className="text-xs mb-8" style={{color:"#8c8c8c"}}>Nostr Growth Log coming soon.</p>
+             
+             <div className="max-w-xs mx-auto">
+                <Btn full onClick={() => alert("Initializing Lightning Zap...")}>Zap Operator ⚡</Btn>
+             </div>
+           </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
 const FeedTab = memo(() => {
   const {state,dispatch} = useStore();
   const font = SF(state.lang);
@@ -1202,6 +1525,7 @@ const ProfileTab = memo(({onDisconnect}) => {
 // ─── APP SHELL ────────────────────────────────────────────────
 const TABS = [
   {id:"feed",    icon:"🌿", label:"Feed"},
+  {id:"explorer",icon:"📒", label:"Manual"},
   {id:"market",  icon:"🏪", label:"Market"},
   {id:"dao",     icon:"🛡", label:"DAO"},
   {id:"usdg",    icon:"💚", label:"USDG"},
@@ -1220,6 +1544,7 @@ function AppShell() {
 
   const content = useMemo(()=>({
     feed:    <FeedTab/>,
+    explorer: <ExplorerTab/>,
     market:  <MarketTab/>,
     dao:     <DAOTab/>,
     usdg:    <USDGTab/>,
