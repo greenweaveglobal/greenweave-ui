@@ -98,6 +98,8 @@ const INIT = {
   carbonCredits: 0,       // tons CO2
   carbonReserve: 142.5,   // protocol total tons backing USDG
   usdgSupply: 142500,     // total USDG minted (1 USDG = 0.001 ton = $1)
+  isConnectOpen: false,
+  isLightningOpen: false,
   nodes: [
     { id:"n1", name:"West Lake Garden",   owner:"Lan",  city:"Ha Noi",     ha:0.5, status:"active",   members:12, carbonPerYear:2.5, stayEnabled:true  },
     { id:"n2", name:"Binh Thanh Rooftop", owner:"Tuan", city:"Sai Gon",    ha:0.1, status:"active",   members:8,  carbonPerYear:0.4, stayEnabled:false },
@@ -159,6 +161,7 @@ function reducer(s, a) {
       ...s,
       wallet: s.wallet ? { ...s.wallet, usdg: s.wallet.usdg + a.amount, carbon: s.wallet.carbon + a.carbon } : null
     };
+    case "SET_MODAL": return { ...s, [a.modal]: a.open };
     default: return s;
   }
 }
@@ -427,11 +430,10 @@ Node: ${nodeName}`
 });
 
 // ─── EXPLORER TAB (GENESIS COVENANT) ────────────────────────
-const ExplorerTab = memo(() => {
+const ExplorerTab = memo(({ selectedId, setSelectedId }) => {
   const {state} = useStore();
   const font = SF(state.lang);
   
-  const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState("");
 
   const nodes = useMemo(() => {
@@ -539,10 +541,9 @@ const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLog
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 sm:p-6 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-neutral-950 border-2 border-neutral-700 p-6 overscroll-contain flex flex-col relative" style={{borderColor:C.line}}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-10">×</button>
-        
+    <div className="fixed inset-0 z-[999999] bg-black/95 flex flex-col items-center justify-start pt-20 px-4 overflow-y-auto backdrop-blur-sm">
+      <div className="relative z-[1000000] transform overflow-hidden bg-neutral-950 border-2 border-green-500 text-left shadow-2xl transition-all w-full max-w-md flex flex-col p-6 overscroll-contain" style={{borderColor:C.line}}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-50">×</button>
         <h2 style={{fontFamily:DF, fontSize:24, color:C.leaf, marginBottom:24, letterSpacing:2}}>CONNECT WALLET</h2>
 
         {mode === "select" && (
@@ -664,10 +665,10 @@ const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLog
 
         {loading && <div className="mt-6 text-center text-[10px] uppercase tracking-[4px] animate-pulse" style={{color:C.leaf}}>Initializing Auth...</div>}
         {error && <p className="mt-4 text-[10px] text-red-500 font-bold text-center uppercase tracking-tight">{error}</p>}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  });
 
 // ─── LIGHTNING CONNECT MODAL ──────────────────────────────────
 const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
@@ -676,9 +677,9 @@ const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 sm:p-6 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-neutral-950 border-2 border-neutral-700 p-6 overscroll-contain flex flex-col relative" style={{borderColor:C.line}}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-10">×</button>
+    <div className="fixed inset-0 z-[999999] bg-black/95 flex flex-col items-center justify-start pt-20 px-4 overflow-y-auto backdrop-blur-sm">
+      <div className="relative z-[1000000] transform overflow-hidden bg-neutral-950 border-2 border-green-500 text-left shadow-2xl transition-all w-full max-w-md flex flex-col p-6 overscroll-contain" style={{borderColor:C.line}}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-xl opacity-40 hover:opacity-100 z-50">×</button>
         <h2 style={{fontFamily:DF, fontSize:24, color:C.amber, marginBottom:24, letterSpacing:2}}>LIGHTNING SETUP</h2>
         
         <div className="space-y-6">
@@ -703,16 +704,14 @@ const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
 
 // ─── NODE DETAIL VIEW ─────────────────────────────────────────
 const NodeDetailView = memo(({node, onBack}) => {
-  const {state} = useStore();
+  const {state, dispatch} = useStore();
   const font = SF(state.lang);
-  const { zap, saveNwc, loading: zapLoading, error: zapError } = useLightning();
-  const { fetchComments, postComment, user, loginNip07, loginPrivateKey, loginRemote, loginReadOnly, error: nostrError, loading: nostrLoading } = useNostr();
+  const { zap, error: zapError, loading: zapLoading } = useLightning();
+  const { fetchComments, postComment, user } = useNostr();
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
-  const [isConnectOpen, setIsConnectOpen] = useState(false);
-  const [isLightningOpen, setIsLightningOpen] = useState(false);
 
   useEffect(() => {
     fetchComments(node.id).then(setComments);
@@ -721,7 +720,7 @@ const NodeDetailView = memo(({node, onBack}) => {
   const handleZap = async () => {
     // If not logged in at all, open connect modal
     if (!user) {
-      setIsConnectOpen(true);
+      dispatch({ type: "SET_MODAL", modal: "isConnectOpen", open: true });
       return;
     }
 
@@ -730,7 +729,7 @@ const NodeDetailView = memo(({node, onBack}) => {
       alert("⚡ ZAP SUCCESSFUL! BIOMASS NODE LOGGED.");
     } else {
       // If zap fails (e.g. no wallet), show setup
-      setIsLightningOpen(true);
+      dispatch({ type: "SET_MODAL", modal: "isLightningOpen", open: true });
     }
   };
 
@@ -776,11 +775,6 @@ const NodeDetailView = memo(({node, onBack}) => {
             </button>
           </div>
           {zapError && <p className="text-[8px] text-red-500 mt-2">{zapError}</p>}
-          <LightningConnectModal 
-            isOpen={isLightningOpen} 
-            onClose={() => setIsLightningOpen(false)} 
-            onSaveNwc={saveNwc} 
-          />
         </div>
       </div>
 
@@ -900,18 +894,7 @@ const NodeDetailView = memo(({node, onBack}) => {
               {!user ? (
                  <div className="text-center p-8 bg-neutral-900/50 border-2 border-neutral-800">
                    <p className="text-[10px] uppercase tracking-[3px] font-black mb-6 opacity-60">Identity Verification Required</p>
-                   <Btn full onClick={() => setIsConnectOpen(true)}>Connect Identity to Participate</Btn>
-                   <NostrConnectModal 
-                      isOpen={isConnectOpen} 
-                      onClose={() => setIsConnectOpen(false)}
-                      onLoginNip07={loginNip07}
-                      onLoginPK={loginPrivateKey}
-                      onLoginRemote={loginRemote}
-                      onLoginReadOnly={loginReadOnly}
-                      onSaveNwc={saveNwc}
-                      loading={nostrLoading}
-                      error={nostrError}
-                   />
+                   <Btn full onClick={() => dispatch({ type: "SET_MODAL", modal: "isConnectOpen", open: true })}>Connect Identity to Participate</Btn>
                  </div>
               ) : (
                  <div className="space-y-4">
@@ -1738,9 +1721,167 @@ const ProfileTab = memo(({onDisconnect, user, profile}) => {
   );
 });
 
+// ─── ONBOARDING GUIDE ─────────────────────────────────────────
+const GuideTab = memo(() => {
+  const {state} = useStore();
+  const font = SF(state.lang);
+  
+  return (
+    <div style={{fontFamily:font}} className="u1">
+      <div className="mb-10 text-center">
+        <h1 style={{fontFamily:DF, fontSize:32, color:C.leaf, letterSpacing:4, fontStyle:"italic"}} className="mb-4">
+          THE MYCELIUM NETWORK
+        </h1>
+        <p className="text-[10px] uppercase tracking-[4px] opacity-60 font-black">
+          (HƯỚNG DẪN NHẬP CƯ)
+        </p>
+      </div>
+
+      <Card className="mb-8 border-2 border-neutral-700 bg-neutral-900/40 p-6">
+        <p className="text-xs leading-relaxed text-center font-medium" style={{color:C.dew}}>
+          This garden operates on a 100% Zero-Backend architecture. No central servers, no permission required. You own your data.
+        </p>
+      </Card>
+
+      <div className="space-y-6">
+        {/* Step 1 */}
+        <div className="border-2 border-neutral-700 p-6 group hover:border-green-500 transition-colors bg-black/50">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="w-8 h-8 flex items-center justify-center border-2 border-green-500 text-green-400 font-black text-sm">01</span>
+            <h2 className="text-xs uppercase tracking-[3px] font-black text-green-400">The Seed (Tạo Danh tính Mật mã)</h2>
+          </div>
+          <p className="text-xs leading-relaxed opacity-80 mb-4">
+            To interact with the Biomass Nodes, you need a cryptographic key (like a digital seed). We use the <span className="text-green-400">Nostr protocol</span>.
+          </p>
+          <div className="space-y-3 pt-4 border-t border-neutral-800">
+             <p className="text-[10px] opacity-60 uppercase font-black tracking-widest mb-2">Recommended Tools:</p>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href="https://getalby.com" target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 border border-neutral-800 bg-neutral-900/50 hover:bg-white/5 transition-all group/link">
+                   <span className="text-[10px] font-black tracking-widest text-white/80 group-hover/link:text-green-400">ALBY (DESKTOP)</span>
+                   <ExternalLink size={12} className="opacity-40 group-hover/link:opacity-100 group-hover/link:text-green-400" />
+                </a>
+                <a href="https://zeusln.com" target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 border border-neutral-800 bg-neutral-900/50 hover:bg-white/5 transition-all group/link">
+                   <span className="text-[10px] font-black tracking-widest text-white/80 group-hover/link:text-green-400">ZEUS (MOBILE)</span>
+                   <ExternalLink size={12} className="opacity-40 group-hover/link:opacity-100 group-hover/link:text-green-400" />
+                </a>
+             </div>
+             <p className="text-[9px] opacity-40 mt-3 italic">
+               Generate your keys. Do not lose your nsec (Private Key).
+             </p>
+          </div>
+        </div>
+
+        {/* Step 2 */}
+        <div className="border-2 border-neutral-700 p-6 group hover:border-green-500 transition-colors bg-black/50">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="w-8 h-8 flex items-center justify-center border-2 border-green-500 text-green-400 font-black text-sm">02</span>
+            <h2 className="text-xs uppercase tracking-[3px] font-black text-green-400">The Roots (Kết nối vào Trạm)</h2>
+          </div>
+          <p className="text-xs leading-relaxed opacity-80">
+            Click <span className="text-green-400 font-bold underline">"CONNECT NOSTR"</span> on our site. Your wallet will ask for permission to sign events. This proves your Proof of Work without needing an email or password.
+          </p>
+        </div>
+
+        {/* Step 3 */}
+        <div className="border-2 border-neutral-700 p-6 group hover:border-green-500 transition-colors bg-black/50">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="w-8 h-8 flex items-center justify-center border-2 border-green-500 text-green-400 font-black text-sm">03</span>
+            <h2 className="text-xs uppercase tracking-[3px] font-black text-green-400">The Consensus (Tương tác với Hệ sinh thái)</h2>
+          </div>
+          <p className="text-xs leading-relaxed opacity-80">
+            Once connected, you can leave permanent cryptographic signatures (Comments) on physical trees in the Community Board. You can also shoot Lightning Sats (ZAPs ⚡️) directly to the nodes to fund their physical growth.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ─── BIOMASS MAP ──────────────────────────────────────────────
+const MapTab = memo(({ onNodeSelect }) => {
+  const {state} = useStore();
+  const font = SF(state.lang);
+
+  return (
+    <div style={{fontFamily:font}} className="u1 h-full flex flex-col">
+      <div className="mb-6 flex justify-between items-end">
+        <div>
+          <h1 style={{fontFamily:DF, fontSize:28, color:C.leaf, letterSpacing:2}} className="mb-1 uppercase">
+            Biomass Network
+          </h1>
+          <p className="text-[9px] uppercase tracking-[4px] opacity-40 font-black">
+            (Bản đồ Sinh khối Layer 0)
+          </p>
+        </div>
+        <div className="hidden md:block text-right">
+          <p className="text-[8px] font-mono opacity-40 uppercase tracking-widest">Global Consensus: Verified</p>
+          <p className="text-[8px] font-mono text-green-500 uppercase tracking-widest">Network Status: Online</p>
+        </div>
+      </div>
+
+      <div className="w-full relative z-0 border-2 border-neutral-800 bg-neutral-950 flex flex-col shadow-2xl" style={{ height: '500px' }}>
+        
+        {/* HUD OVERLAYS */}
+        <div className="absolute top-6 left-6 z-10 pointer-events-none">
+          <div className="border-2 border-neutral-800 bg-black/80 p-3 flex flex-col gap-1 backdrop-blur-sm">
+            <span className="text-green-500 font-mono text-xs font-bold tracking-widest">SURVEILLANCE MODE</span>
+            <span className="text-neutral-500 font-mono text-[10px] tracking-wider uppercase">SYSTEM TIME: LIVE SYNC</span>
+          </div>
+        </div>
+
+        <div className="absolute bottom-6 right-6 z-10 pointer-events-none">
+          <div className="border-2 border-neutral-800 bg-black/80 px-4 py-2 flex items-center gap-3 backdrop-blur-sm">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+            <span className="text-white font-mono text-xs font-bold tracking-widest">1 NODE VERIFIED</span>
+          </div>
+        </div>
+
+      {/* GOOGLE MAPS IFRAME (Anonymous Embed + CSS Filter) */}
+      <div className="w-full h-full overflow-hidden bg-[#000]">
+        <iframe
+          width="100%"
+          height="100%"
+          frameBorder="0"
+          scrolling="no"
+          marginHeight="0"
+          marginWidth="0"
+          src="https://maps.google.com/maps?q=10.762622,106.660172&t=m&z=6&output=embed&iwloc=near"
+          style={{ 
+            filter: 'invert(100%) hue-rotate(180deg) contrast(1.5) grayscale(0.2)',
+            pointerEvents: 'auto' 
+          }}
+        ></iframe>
+      </div>
+      </div>
+      
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-6 bg-white/5 border border-white/5 space-y-4">
+           <h3 className="text-xs font-black uppercase tracking-[3px] text-green-500">Node Status Report</h3>
+           <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-white/5">
+                 <span className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Active Roots</span>
+                 <span className="text-sm font-mono font-bold">142</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-white/5">
+                 <span className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Verified Biomass</span>
+                 <span className="text-sm font-mono font-bold">1,824.5 kg</span>
+              </div>
+           </div>
+        </div>
+        <div className="p-6 bg-white/5 border border-white/5 flex flex-col justify-center items-center text-center space-y-3">
+           <MapPin size={24} className="text-green-500 opacity-40" />
+           <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Select a Node on Radar to Begin Synchronizing</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // ─── APP SHELL ────────────────────────────────────────────────
 const TABS = [
+  {id:"guide",   icon:"📖", label:"Join"},
   {id:"feed",    icon:"🌿", label:"Feed"},
+  {id:"map",      icon:"🗺", label:"Map"},
   {id:"explorer",icon:"📒", label:"Manual"},
   {id:"market",  icon:"🏪", label:"Market"},
   {id:"dao",     icon:"🛡", label:"DAO"},
@@ -1753,8 +1894,8 @@ function AppShell() {
   const {state,dispatch} = useStore();
   const font = SF(state.lang);
   const [tab,setTab] = useState("feed");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [connected,setConnected] = useState(false);
-  const [isConnectOpen, setIsConnectOpen] = useState(false);
   const { user, profile, loginNip07, loginPrivateKey, loginRemote, loginReadOnly, error: nostrError, loading: nostrLoading } = useNostr();
   const { saveNwc } = useLightning();
 
@@ -1762,14 +1903,16 @@ function AppShell() {
   const disconnect = useCallback(()=>{dispatch({type:"DISCONNECT"});setConnected(false);setTab("feed");},[dispatch]);
 
   const content = useMemo(()=>({
+    guide:   <GuideTab/>,
     feed:    <FeedTab/>,
-    explorer: <ExplorerTab/>,
+    map:     <MapTab onNodeSelect={(id) => { setSelectedNodeId(id); setTab("explorer"); }} />,
+    explorer: <ExplorerTab selectedId={selectedNodeId} setSelectedId={setSelectedNodeId} />,
     market:  <MarketTab/>,
     dao:     <DAOTab/>,
     usdg:    <USDGTab/>,
     storage: <StorageInfo/>,
     me:      <ProfileTab onDisconnect={disconnect} user={user} profile={profile}/>,
-  }),[disconnect, user, profile]);
+  }),[disconnect, user, profile, selectedNodeId]);
 
   if(!connected) return <ConnectGate onConnect={connect}/>;
 
@@ -1789,24 +1932,11 @@ function AppShell() {
           </div>
           <div className="flex items-center gap-4">
             {!user ? (
-               <>
-                 <button onClick={() => setIsConnectOpen(true)} disabled={nostrLoading}
-                   className="px-3 py-1.5 text-[9px] uppercase tracking-[2px] font-bold border rounded-none hover:bg-white/5"
-                   style={{borderColor:C.line, color:C.leaf}}>
-                   {nostrLoading ? "CONNECTING..." : "CONNECT NOSTR"}
-                 </button>
-                 <NostrConnectModal 
-                    isOpen={isConnectOpen} 
-                    onClose={() => setIsConnectOpen(false)}
-                    onLoginNip07={loginNip07}
-                    onLoginPK={loginPrivateKey}
-                    onLoginRemote={loginRemote}
-                    onLoginReadOnly={loginReadOnly}
-                    onSaveNwc={saveNwc}
-                    loading={nostrLoading}
-                    error={nostrError}
-                 />
-               </>
+               <button onClick={() => dispatch({ type: "SET_MODAL", modal: "isConnectOpen", open: true })} disabled={nostrLoading}
+                 className="px-3 py-1.5 text-[9px] uppercase tracking-[2px] font-bold border rounded-none hover:bg-white/5"
+                 style={{borderColor:C.line, color:C.leaf}}>
+                 {nostrLoading ? "CONNECTING..." : "CONNECT NOSTR"}
+               </button>
             ) : (
                <div className="flex items-center gap-3 px-3 py-1.5 border" style={{borderColor:C.line, background:C.ghost}}>
                   <div className="w-5 h-5 overflow-hidden border" style={{borderColor:C.leaf}}>
@@ -1827,6 +1957,11 @@ function AppShell() {
                 <span className="text-[9px] uppercase tracking-widest opacity-60">USDG</span>
               </div>
             )}
+            <button onClick={() => setTab("guide")} 
+              className="px-2 py-1.5 text-[9px] uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity font-bold hidden sm:block"
+              style={{color:C.leaf}}>
+              HOW TO JOIN?
+            </button>
             <LangSwitcher/>
           </div>
         </div>
@@ -1850,6 +1985,24 @@ function AppShell() {
       <div className="max-w-3xl mx-auto px-6 py-8 pb-12">
         {content[tab]}
       </div>
+
+      {/* Global Modals at Root */}
+      <NostrConnectModal 
+        isOpen={state.isConnectOpen} 
+        onClose={() => dispatch({ type: "SET_MODAL", modal: "isConnectOpen", open: false })}
+        onLoginNip07={loginNip07}
+        onLoginPK={loginPrivateKey}
+        onLoginRemote={loginRemote}
+        onLoginReadOnly={loginReadOnly}
+        onSaveNwc={saveNwc}
+        loading={nostrLoading}
+        error={nostrError}
+      />
+      <LightningConnectModal 
+        isOpen={state.isLightningOpen} 
+        onClose={() => dispatch({ type: "SET_MODAL", modal: "isLightningOpen", open: false })} 
+        onSaveNwc={saveNwc} 
+      />
     </div>
   );
 }
