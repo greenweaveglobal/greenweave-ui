@@ -110,11 +110,29 @@ export function useNostr() {
   const fetchComments = useCallback(async (nodeId: string) => {
     const filter = {
       kinds: [1],
-      '#t': ['greenweave', `node-${nodeId}`],
+      '#t': [`greenweave_node_${nodeId}`],
       limit: 50
     };
     const events = await ndk.fetchEvents(filter);
-    return Array.from(events);
+    const eventsList = Array.from(events);
+    
+    // Resolve author profiles in parallel
+    const resolvedEvents = await Promise.all(eventsList.map(async (event) => {
+      const author = event.author;
+      // We don't try to fetch everything to keep it fast, but basic profile if cached
+      return {
+        id: event.id,
+        content: event.content,
+        created_at: event.created_at,
+        pubkey: event.pubkey,
+        author: {
+          npub: author.npub,
+          profile: author.profile || null
+        }
+      };
+    }));
+    
+    return resolvedEvents.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
   }, []);
 
   const postComment = useCallback(async (nodeId: string, content: string) => {
@@ -124,9 +142,7 @@ export function useNostr() {
     event.kind = 1;
     event.content = content;
     event.tags = [
-      ['t', 'greenweave'],
-      ['t', `node-${nodeId}`],
-      ['p', 'npub16ptj5779lypxv4nd6v4ypjqy3eys8y7g5zqwk33g3qcyyzq0y6zq9v9v6p'] // System/Dev pubkey example
+      ['t', `greenweave_node_${nodeId}`],
     ];
     await event.publish();
     return event;

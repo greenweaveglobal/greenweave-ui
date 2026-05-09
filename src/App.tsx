@@ -453,6 +453,32 @@ const ExplorerTab = memo(() => {
 
   return (
     <div style={{fontFamily:font}}>
+      {/* Prologue */}
+      <Card className="mb-10 border-l-4 !border-l-[#10b981] p-8 u1" style={{background: "#080808", borderColor: "rgba(255,255,255,0.05)"}}>
+        <h3 className="text-[10px] uppercase tracking-[4px] font-black mb-6" style={{color: C.usdg}}>
+          THE ORIGIN OF CODE: A PHYSICAL WEAVING
+        </h3>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <p className="text-lg italic leading-relaxed" style={{fontFamily: DF, color: C.dew}}>
+              Lập trình không bắt đầu từ những chiếc màn hình. Nó bắt đầu từ thế kỷ 19 với Cỗ máy dệt Jacquard — nơi những tấm thẻ gỗ đục lỗ (0 và 1) ra lệnh cho những sợi tơ dệt nên hoa văn. Việc 'Dệt' (Weaving) chính là hình thức lập trình vật lý đầu tiên của nhân loại.
+            </p>
+            <p className="text-lg italic leading-relaxed" style={{fontFamily: DF, color: C.dew}}>
+              Tại Green Weave Global, chúng tôi tiếp nối di sản đó. Chúng tôi không chỉ viết những dòng mã nhị phân tĩnh lặng trên không gian mạng, chúng tôi đang 'dệt' lại sinh quyển bằng những mầm cây và hệ sợi nấm. Mỗi Node Sinh khối là một sợi tơ, và giao thức mật mã chính là tấm thẻ đục lỗ định hình nên hệ sinh thái.
+            </p>
+          </div>
+          
+          <div className="pt-6 border-t font-mono text-[10px] space-y-3 opacity-40 leading-relaxed" style={{borderColor: "rgba(255,255,255,0.05)"}}>
+            <p>
+              Programming didn't start with screens. It began in the 19th century with the Jacquard Loom, where punched wooden cards (0s and 1s) commanded threads to weave patterns. "Weaving" was humanity's first physical form of coding.
+            </p>
+            <p>
+              At Green Weave Global, we continue this legacy. We aren't just writing silent binary code in cyberspace; we are re-weaving the biosphere with seedlings and mycelium networks. Each Biomass Node is a thread, and cryptographic protocols are the punch cards shaping the ecosystem.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Search */}
       <div className="flex flex-col gap-4 mb-8">
         <div className="relative">
@@ -825,30 +851,56 @@ const NodeDetailView = memo(({node, onBack}) => {
           </div>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-12">
            <section>
-              <p className="text-[10px] uppercase tracking-[3px] mb-4 opacity-40 font-bold">Community Growth Log (Nostr)</p>
+              <div className="flex justify-between items-center mb-6">
+                <p className="text-[10px] uppercase tracking-[3px] opacity-40 font-black">Hội đồng Tự nhiên (Consensus Roll)</p>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-[8px] uppercase tracking-widest opacity-40">Syncing with relays...</span>
+                </div>
+              </div>
+
               <div className="space-y-4">
                  {comments.length === 0 ? (
-                    <p className="text-xs opacity-40">No entries yet. Be the first to anchor a thought.</p>
+                    <div className="py-12 border-2 border-dashed border-neutral-800 flex flex-col items-center justify-center text-center px-6">
+                       <p className="text-2xl mb-4 opacity-20">🍃</p>
+                       <p className="text-[10px] uppercase tracking-[3px] opacity-40 font-bold mb-1">Silence in the Grove</p>
+                       <p className="text-[10px] opacity-30 leading-relaxed uppercase tracking-tighter">No biological observations have been anchored to this node yet.</p>
+                    </div>
                  ) : (
                     comments.map(c => (
-                       <Card key={c.id} className="p-4" style={{borderColor:C.line}}>
-                          <div className="flex items-center gap-2 mb-2">
-                             <div className="w-6 h-6 border flex items-center justify-center text-[10px] opacity-60" style={{borderColor:C.leaf}}>⚡</div>
-                             <p className="text-[10px] font-mono opacity-60">{c.author.npub.slice(0,12)}...</p>
+                       <Card key={c.id} className="!p-5 border-2 border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/50 transition-colors">
+                          <div className="flex items-center gap-3 mb-4">
+                             <div className="w-8 h-8 rounded-none border-2 flex items-center justify-center overflow-hidden shrink-0" 
+                               style={{borderColor: C.leaf, background: C.ghost}}>
+                                <img 
+                                  src={c.author.profile?.image || `https://robohash.org/${c.pubkey}`} 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => { (e.target as HTMLImageElement).src = `https://robohash.org/${c.pubkey}`; }}
+                                />
+                             </div>
+                             <div className="flex-1 min-w-0">
+                                <p className="text-[10px] font-black uppercase tracking-widest truncate" style={{color: C.dew}}>
+                                  {c.author.profile?.name || c.author.profile?.display_name || `${c.author.npub.slice(0, 10)}...`}
+                                </p>
+                                <p className="text-[8px] font-mono opacity-40 uppercase tracking-tighter">
+                                  {new Date((c.created_at || 0) * 1000).toLocaleString()}
+                                </p>
+                             </div>
                           </div>
-                          <p className="text-xs leading-relaxed">{c.content}</p>
+                          <p className="text-[11px] leading-relaxed opacity-80" style={{color: '#e0e0e0'}}>{c.content}</p>
                        </Card>
                     ))
                  )}
               </div>
            </section>
 
-           <div className="pt-8 border-t" style={{borderColor:C.line}}>
+           <div className="pt-8 border-t-2 border-neutral-800">
               {!user ? (
-                 <>
-                   <Btn full onClick={() => setIsConnectOpen(true)}>Connect Nostr to Log Progress</Btn>
+                 <div className="text-center p-8 bg-neutral-900/50 border-2 border-neutral-800">
+                   <p className="text-[10px] uppercase tracking-[3px] font-black mb-6 opacity-60">Identity Verification Required</p>
+                   <Btn full onClick={() => setIsConnectOpen(true)}>Connect Identity to Participate</Btn>
                    <NostrConnectModal 
                       isOpen={isConnectOpen} 
                       onClose={() => setIsConnectOpen(false)}
@@ -860,19 +912,29 @@ const NodeDetailView = memo(({node, onBack}) => {
                       loading={nostrLoading}
                       error={nostrError}
                    />
-                 </>
+                 </div>
               ) : (
-                 <div className="space-y-3">
+                 <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] uppercase tracking-[3px] font-black" style={{color: C.leaf}}>New Observation</span>
+                      <span className="flex-1 h-[1px] bg-neutral-800" />
+                    </div>
                     <textarea 
                        value={commentText}
                        onChange={e => setCommentText(e.target.value)}
-                       placeholder="Share your observation on this node..."
-                       className="w-full bg-[#0a0a0a] border p-4 text-xs outline-none rounded-none min-h-[100px]"
-                       style={{borderColor:C.line, color:C.dew}}
+                       placeholder="Log your observation... (Permanently anchors to Node ${node.id})"
+                       className="w-full bg-black border-2 p-4 text-xs font-medium outline-none rounded-none min-h-[120px] transition-all focus:border-green-500 overflow-y-auto"
+                       style={{borderColor: 'rgb(38, 38, 38)', color: C.dew}}
                     />
-                    <Btn onClick={handlePostComment} disabled={posting || !commentText.trim()}>
-                       {posting ? "Anchoring..." : "Publish to Nostr"}
-                    </Btn>
+                    <div className="flex justify-end gap-3">
+                       <p className="text-[8px] uppercase tracking-widest opacity-40 flex items-center gap-1">
+                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                         Ready for Broadcast
+                       </p>
+                       <Btn onClick={handlePostComment} disabled={posting || !commentText.trim()}>
+                          {posting ? "Syncing..." : "Publish to Relays"}
+                       </Btn>
+                    </div>
                  </div>
               )}
            </div>
