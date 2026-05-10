@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import NDK, { NDKUser, NDKEvent, NDKNip07Signer, NDKPrivateKeySigner, NDKNip46Signer } from '@nostr-dev-kit/ndk';
+import { nip19 } from 'nostr-tools';
 
 // Global NDK instance
 const ndk = new NDK({
@@ -7,13 +8,71 @@ const ndk = new NDK({
 });
 
 export function useNostr() {
+  const [pubkey, setPubkey] = useState<string | null>(null);
+  const [npub, setNpub] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  
   const [user, setUser] = useState<NDKUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const encodeNpub = (hex: string) => {
+    try {
+      return nip19.npubEncode(hex);
+    } catch (err) {
+      console.warn("Failed to encode npub:", err);
+      return null;
+    }
+  };
+
   useEffect(() => {
     ndk.connect().catch(err => console.error("NDK Connect Error", err));
+    
+    // Auto-Reconnect Logic: Restore session gracefully
+    const savedPubkey = localStorage.getItem('nostr_pubkey');
+    if (savedPubkey) {
+      setPubkey(savedPubkey);
+      setNpub(encodeNpub(savedPubkey));
+      setIsAuthenticated(true);
+      
+      // Attempt read-only NDK User restore seamlessly
+      const ndkUser = new NDKUser({ pubkey: savedPubkey });
+      ndkUser.ndk = ndk;
+      setUser(ndkUser);
+      ndkUser.fetchProfile().then(setProfile).catch(() => {});
+    }
+  }, []);
+
+  const login = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!(window as any).nostr) throw new Error("NIP-07 Nostr extension not found. Please install Alby or a compatible extension.");
+      
+      const rawPubkey = await (window as any).nostr.getPublicKey();
+      setPubkey(rawPubkey);
+      const encodedNpub = encodeNpub(rawPubkey);
+      setNpub(encodedNpub);
+      setIsAuthenticated(true);
+      localStorage.setItem('nostr_pubkey', rawPubkey);
+      
+      // Also init NDK to support the legacy parts of the app
+      const signer = new NDKNip07Signer();
+      ndk.signer = signer;
+      const ndkUser = await signer.user();
+      if (ndkUser) {
+        ndkUser.ndk = ndk;
+        setUser(ndkUser);
+        const profileData = await ndkUser.fetchProfile();
+        setProfile(profileData);
+      }
+    } catch (err: any) {
+      console.error("Nostr Login Error:", err);
+      setError(err.message || "Failed to authenticate with Nostr");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const initUser = async (signer: any) => {
@@ -22,25 +81,17 @@ export function useNostr() {
     if (ndkUser) {
       ndkUser.ndk = ndk;
       setUser(ndkUser);
+      setPubkey(ndkUser.pubkey);
+      setNpub(encodeNpub(ndkUser.pubkey));
+      setIsAuthenticated(true);
+      localStorage.setItem('nostr_pubkey', ndkUser.pubkey);
       const profileData = await ndkUser.fetchProfile();
       setProfile(profileData);
     }
     return ndkUser;
   };
 
-  const loginNip07 = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!(window as any).nostr) throw new Error("No Nostr extension found");
-      const signer = new NDKNip07Signer();
-      await initUser(signer);
-    } catch (err: any) {
-      setError(err.message || "NIP-07 Login failed");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loginNip07 = login;
 
   const loginPrivateKey = useCallback(async (sk: string) => {
     setLoading(true);
@@ -59,7 +110,6 @@ export function useNostr() {
     setLoading(true);
     setError(null);
     try {
-      // For NIP-46, we need a local signer first (can be ephemeral)
       const localSigner = NDKPrivateKeySigner.generate();
       const signer = new NDKNip46Signer(ndk, bunkerUri, localSigner);
       
@@ -68,9 +118,6 @@ export function useNostr() {
       signer.on("authUrl", (url: string) => {
         window.open(url, '_blank');
       });
-
-      // Show a toast or notification in a real app here with the URI if needed
-      // const connectUri = `nostrconnect://${localSigner.user().pubkey}?relay=${encodeURIComponent('wss://relay.damus.io')}&metadata=${encodeURIComponent(JSON.stringify({name: 'Green Weave'}))}`;
 
       await signer.blockUntilReady();
       await initUser(signer);
@@ -81,19 +128,23 @@ export function useNostr() {
     }
   }, []);
 
-  const loginReadOnly = useCallback(async (pubkey: string) => {
+  const loginReadOnly = useCallback(async (key: string) => {
     setLoading(true);
     setError(null);
     try {
       const ndkUser = new NDKUser({ 
-        npub: pubkey.startsWith('npub') ? pubkey : undefined,
-        pubkey: !pubkey.startsWith('npub') ? pubkey : undefined
+        npub: key.startsWith('npub') ? key : undefined,
+        pubkey: !key.startsWith('npub') ? key : undefined
       });
       ndkUser.ndk = ndk;
       setUser(ndkUser);
+      setPubkey(ndkUser.pubkey);
+      setNpub(encodeNpub(ndkUser.pubkey));
+      setIsAuthenticated(true);
+      localStorage.setItem('nostr_pubkey', ndkUser.pubkey);
       const profileData = await ndkUser.fetchProfile();
       setProfile(profileData);
-      ndk.signer = undefined; // Ensure no signer for read-only
+      ndk.signer = undefined;
     } catch (err: any) {
       setError(err.message || "Read-only Login failed");
     } finally {
@@ -104,6 +155,10 @@ export function useNostr() {
   const logout = useCallback(() => {
     setUser(null);
     setProfile(null);
+    setPubkey(null);
+    setNpub(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('nostr_pubkey');
     ndk.signer = undefined;
   }, []);
 
@@ -116,10 +171,8 @@ export function useNostr() {
     const events = await ndk.fetchEvents(filter);
     const eventsList = Array.from(events);
     
-    // Resolve author profiles in parallel
     const resolvedEvents = await Promise.all(eventsList.map(async (event) => {
       const author = event.author;
-      // We don't try to fetch everything to keep it fast, but basic profile if cached
       return {
         id: event.id,
         content: event.content,
@@ -149,10 +202,14 @@ export function useNostr() {
   }, []);
 
   return {
+    pubkey,
+    npub,
+    isAuthenticated,
     user,
     profile,
     loading,
     error,
+    login,
     loginNip07,
     loginPrivateKey,
     loginRemote,
