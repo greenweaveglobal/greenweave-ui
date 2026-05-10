@@ -674,6 +674,28 @@ const NostrConnectModal = memo(({isOpen, onClose, onLoginNip07, onLoginPK, onLog
 // ─── LIGHTNING CONNECT MODAL ──────────────────────────────────
 const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
   const [uri, setUri] = useState("");
+  const [pasteError, setPasteError] = useState("");
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  // Validate format real-time if there is something typed
+  const isInvalidFormat = uri && !uri.trim().startsWith("nostr+walletconnect://");
+
+  const handlePaste = async () => {
+    setPasteError("");
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text || text.trim() === "") {
+        setPasteError("CLIPBOARD EMPTY - PLEASE RE-COPY FROM ZEUS");
+        // Clear toast after 3s
+        setTimeout(() => setPasteError(""), 3000);
+      } else {
+        setUri(text.trim());
+      }
+    } catch (err) {
+      setPasteError("UNABLE TO READ CLIPBOARD");
+      setTimeout(() => setPasteError(""), 3000);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -688,15 +710,52 @@ const LightningConnectModal = memo(({isOpen, onClose, onSaveNwc}) => {
             <p className="text-[9px] uppercase tracking-wider text-amber-500 font-bold leading-relaxed mb-3">
               ⚡️ Mobile optimized zapping
             </p>
-            <p className="text-[10px] uppercase tracking-widest mb-2 opacity-40 font-bold">NWC pairing URI</p>
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-[10px] uppercase tracking-widest opacity-40 font-bold">NWC pairing URI</p>
+              <button 
+                onClick={handlePaste}
+                className="text-[9px] uppercase tracking-wider px-2 py-1 border border-amber-500/40 text-amber-500/80 hover:bg-amber-500/10 hover:text-amber-500 transition-colors cursor-pointer"
+              >
+                PASTE
+              </button>
+            </div>
+            
             <textarea value={uri} onChange={e=>setUri(e.target.value)}
-              className="w-full bg-black border p-3 text-[10px] font-mono outline-none min-h-[100px]" 
+              className={`w-full bg-black border p-3 text-[10px] font-mono outline-none min-h-[100px] ${isInvalidFormat ? '!border-red-500 !text-red-500' : ''}`} 
               style={{borderColor:C.line, color:C.dew}} placeholder="nostr+walletconnect://..." />
+            
+            {isInvalidFormat && (
+              <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest mt-2 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
+                ⚠ INVALID NWC FORMAT
+              </p>
+            )}
+
+            {pasteError && (
+              <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest mt-2">
+                {pasteError}
+              </p>
+            )}
+
             <p className="text-[8px] mt-3 opacity-60 leading-relaxed uppercase font-bold text-amber-200/50">
               Paste your NWC string from Zeus to enable 1-click zaps.
             </p>
+
+            <button 
+              onClick={() => setShowInstructions(!showInstructions)}
+              className="text-[9px] text-amber-500/60 hover:text-amber-500 underline mt-2 block"
+            >
+              How to get this?
+            </button>
+
+            {showInstructions && (
+              <div className="mt-3 p-3 bg-black/50 border border-amber-500/20 text-[9px] text-amber-200/70 font-mono space-y-1">
+                <p>1. Open Zeus app</p>
+                <p>2. Go to Settings &gt; NWC</p>
+                <p>3. Copy the NWC URI</p>
+              </div>
+            )}
           </div>
-          <Btn onClick={() => { if(onSaveNwc(uri)) onClose(); else alert("Invalid URI"); }} disabled={!uri}>Enable 1-Click Zaps</Btn>
+          <Btn onClick={() => { if(onSaveNwc(uri)) onClose(); else alert("Invalid URI"); }} disabled={!uri || isInvalidFormat}>Enable 1-Click Zaps</Btn>
         </div>
       </div>
     </div>
