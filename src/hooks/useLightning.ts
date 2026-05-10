@@ -8,25 +8,37 @@ export function useLightning() {
     setLoading(true);
     setError(null);
     try {
-      const webln = (window as any).webln;
+      // 1. Fetch Invoice from Lightning Address
+      const parts = address.split('@');
+      if (parts.length !== 2) throw new Error("Invalid Lightning Address format. Expected user@domain.com");
+      const [user, domain] = parts;
       
-      // 1. Try NWC first (Priority for mobile/seamless)
-      const nwcUri = localStorage.getItem('gwg_nwc_secret');
-      if (nwcUri) {
-        console.log(`[NIP-47] Silent zap: ${amount} sats to ${address}`);
-        // Here we simulate the NWC relay request
-        // In a real implementation: const provider = new NWCProvider(nwcUri); await provider.sendPayment(...)
-        return true;
+      let pr = "";
+      try {
+        const res = await fetch(`https://${domain}/.well-known/lnurlp/${user}`);
+        const lnurlp = await res.json();
+        
+        const callbackObj = new URL(lnurlp.callback);
+        callbackObj.searchParams.append("amount", (amount * 1000).toString());
+        const invRes = await fetch(callbackObj.toString());
+        const invoiceData = await invRes.json();
+        
+        if (!invoiceData.pr) throw new Error("No pr found");
+        pr = invoiceData.pr;
+      } catch (err) {
+        throw new Error("Failed to generate Lightning invoice for this address.");
       }
 
-      // 2. Fallback to WebLN (Desktop Extension)
+      // 2. Pay Invoice via WebLN
+      const webln = (window as any).webln;
       if (webln) {
         await webln.enable();
-        console.log(`[WEBLN] Requesting payment for ${amount} sats to ${address}`);
+        await webln.sendPayment(pr);
+        console.log(`[WEBLN] Successfully paid ${amount} sats to ${address}`);
         return true;
       }
 
-      throw new Error("No wallet connected. Please link ZEUS (NWC) or Alby.");
+      throw new Error("No WebLN provider found. Please install the Alby extension.");
     } catch (err: any) {
       setError(err.message || "Zap failed");
       return false;

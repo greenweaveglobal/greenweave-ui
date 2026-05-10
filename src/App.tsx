@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useReducer, memo, createContext, useContext, useEffect } from "react";
 import { Copy, MapPin, ExternalLink, ShieldCheck } from "lucide-react";
+import { SimplePool, nip19 } from 'nostr-tools';
 import { GENESIS_NODES } from "./lib/data/genesisNodes";
 import { useNostr } from "./hooks/useNostr";
 import { useLightning } from "./hooks/useLightning";
@@ -927,188 +928,120 @@ const NodeDetailView = memo(({node, onBack}) => {
   );
 });
 
+const relays = [
+  'wss://relay.damus.io',
+  'wss://relay.nostr.band',
+  'wss://nos.lol'
+];
+const pool = new SimplePool();
+
 const FeedTab = memo(() => {
-  const {state,dispatch} = useStore();
+  const {state} = useStore();
   const font = SF(state.lang);
-  const [compose,setCompose]=useState(false);
-  const [content,setContent]=useState("");
-  const [storage,setStorage]=useState(state.wallet?.storagePref || "nostr");
-  const [reportMenu,setReportMenu]=useState(null);
+  
+  const [content, setContent] = useState("");
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [publishing, setPublishing] = useState(false);
 
-  const [imageSrc, setImageSrc] = useState(null);
-  const [audioSrc, setAudioSrc] = useState(null);
-  const [mediaLoading, setMediaLoading] = useState(false);
+  useEffect(() => {
+    const filters: any[] = [{ kinds: [1], '#t': ['GreenWeave'], limit: 20 }];
+    const sub = pool.subscribeMany(
+      relays,
+      filters as any,
+      {
+        onevent(event) {
+          setEvents(prev => {
+            if (prev.find(e => e.id === event.id)) return prev;
+            return [...prev, event].sort((a, b) => b.created_at - a.created_at);
+          });
+        },
+        oneose() {
+          setLoading(false);
+        }
+      }
+    );
+    return () => sub.close();
+  }, []);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageSrc(URL.createObjectURL(file));
-      setCompose(true);
-    }
-  };
+  const doPost = async () => {
+    if (!content.trim()) return;
+    setPublishing(true);
 
-  const handleAudioUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAudioSrc(URL.createObjectURL(file));
-      setCompose(true);
-    }
-  };
+    try {
+      if (!(window as any).nostr) throw new Error("NIP-07 extension missing");
 
-  const doPost = useCallback(()=>{
-    if(!content.trim() && !imageSrc && !audioSrc) return;
-    setMediaLoading(true);
+      const event = {
+        kind: 1,
+        content: content + "\n\n#GreenWeave",
+        tags: [["t", "GreenWeave"]],
+        created_at: Math.floor(Date.now() / 1000),
+      };
 
-    setTimeout(() => {
-      dispatch({type:"ADD_POST",payload:{
-        id:`p${Date.now()}`,
-        author:`${state.wallet?.name || "Guest Node"} · ${(state.wallet?.address||"").slice(0,8)||"..."}`,
-        tier:"thread", time:"just now",
-        content, tags:[], likes:0, reports:0, burned:false,
-        img:"🌱", storage,
-        imageStr: imageSrc,
-        audioStr: audioSrc,
-        txHash: storage==="nostr"?"npub"+Math.random().toString(36).slice(2,10):
-                 storage==="rgb"?"rgb:"+Math.random().toString(36).slice(2,10):
-                 "Qm"+Math.random().toString(36).slice(2,10),
-      }});
+      const signedEvent = await (window as any).nostr.signEvent(event);
+      await Promise.any(pool.publish(relays, signedEvent));
+      
       setContent("");
-      setImageSrc(null);
-      setAudioSrc(null);
-      setMediaLoading(false);
-      setCompose(false);
-    }, 1500);
-  },[content, storage, imageSrc, audioSrc, state.wallet, dispatch]);
-
-  const doReport = useCallback((post,reason)=>{
-    dispatch({type:"REPORT_POST",id:post.id,preview:post.content,reason});
-    setReportMenu(null);
-  },[dispatch]);
-
-  const doLike = useCallback(id=>dispatch({type:"LIKE",id}),[dispatch]);
-
-  const REPORT_REASONS = ["spam","offensive","misinformation","off-topic"];
-  const STORAGE_OPTIONS = [
-    {id:"nostr",label:"Nostr",icon:"⚡",desc:"Relay network · free"},
-    {id:"ipfs",   label:"IPFS",   icon:"⬡",desc:"Distributed · free"},
-    {id:"rgb", label:"RGB", icon:"🟢",desc:"Bitcoin native · L2/L3"},
-  ];
+      setEvents(prev => [signedEvent, ...prev].sort((a, b) => b.created_at - a.created_at));
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   return (
     <div style={{fontFamily:font}}>
       {/* Compose */}
       <Card className="mb-4" style={{borderColor:`${C.leaf}28`}}>
-        <textarea value={content} onChange={e=>setContent(e.target.value)} disabled={mediaLoading}
+        <textarea value={content} onChange={e=>setContent(e.target.value)} disabled={publishing}
           placeholder="Update your node's status... What does this nature mean to you?"
           rows={3} className="w-full p-2.5 rounded-none text-xs outline-none resize-none mb-3"
           style={{background:"rgba(255,255,255,0.05)",border:`1px solid ${C.leaf}20`,color:C.dew,fontFamily:"inherit"}}/>
         
-        {/* MEDIA PREVIEWS */}
-        {imageSrc && (
-          <div className="relative mb-3 inline-block w-full">
-            <img src={imageSrc} style={{maxHeight: "300px", width: "100%", objectFit: "cover", borderRadius: "4px"}} />
-            {!mediaLoading && <button className="absolute top-2 right-2 bg-black bg-opacity-70 text-white rounded-none w-7 h-7 flex items-center justify-center text-xs cursor-pointer border-none" onClick={() => setImageSrc(null)}>✕</button>}
-          </div>
-        )}
-        {audioSrc && (
-            <div className="relative mb-3 flex items-center gap-3 bg-[#0a0a0a] border rounded-none p-3 w-full" style={{borderColor:C.line}}>
-              <span style={{fontSize: 20}}>🎤</span>
-              <audio controls src={audioSrc} className="flex-1 h-8" style={{outline: "none"}} />
-              {!mediaLoading && <button className="text-[10px] uppercase tracking-widest font-semibold p-1 cursor-pointer bg-transparent border-none" style={{color:C.red}} onClick={() => setAudioSrc(null)}>✕</button>}
-            </div>
-        )}
-
-        {/* MEDIA TOOLBAR */}
-        <div className="flex gap-5 mb-4 border-b pb-4" style={{borderColor:C.line}}>
-          <button disabled={mediaLoading} className="flex items-center gap-2 text-[10px] uppercase tracking-widest cursor-pointer" style={{color:C.leaf, background:"none", border:"none", opacity:mediaLoading?0.5:1}} onClick={() => document.getElementById("img-upload").click()}>
-            <span style={{fontSize: 16}}>📸</span> Attach Image
-          </button>
-          <input id="img-upload" type="file" accept="image/*" style={{display:"none"}} onChange={handleImageUpload} />
-          
-          <button disabled={mediaLoading} className="flex items-center gap-2 text-[10px] uppercase tracking-widest cursor-pointer" style={{color:C.sky, background:"none", border:"none", opacity:mediaLoading?0.5:1}} onClick={() => document.getElementById("audio-upload").click()}>
-            <span style={{fontSize: 16}}>🎤</span> Attach Audio
-          </button>
-          <input id="audio-upload" type="file" accept="audio/*" style={{display:"none"}} onChange={handleAudioUpload} />
-        </div>
-
-        {/* Storage selector & Post */}
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[9px] uppercase tracking-[2px]" style={{color:C.leaf}}>
-              ⛓ Store on: {STORAGE_OPTIONS.find(s=>s.id===storage)?.label}
-            </p>
-          </div>
-          <Btn onClick={doPost} full disabled={(!content.trim() && !imageSrc && !audioSrc) || mediaLoading}>
-              {mediaLoading ? "Broadcasting..." : `Publish to ${STORAGE_OPTIONS.find(s=>s.id===storage)?.label || "Network"}`}
+          <Btn onClick={doPost} full disabled={!content.trim() || publishing}>
+              {publishing ? "Broadcasting..." : `PUBLISH TO NOSTR`}
           </Btn>
         </div>
       </Card>
 
       {/* Posts */}
       <div className="flex flex-col gap-3">
-      {state.posts.filter(p=>!p.burned).map(p=>(
-        <Card key={p.id} className="relative"
-          style={{opacity:p.reports>=3?"0.6":1}}>
-          {p.reports>=3&&(
-            <div className="absolute inset-0 rounded-none flex items-center justify-center"
-              style={{background:"rgba(0,0,0,0.5)",zIndex:2}}>
-              <p className="text-xs" style={{color:C.red}}>⚠ Under community review ({p.reports} reports)</p>
-            </div>
-          )}
+      {loading && <p className="text-xs text-neutral-500 font-mono text-center py-4 tracking-widest uppercase animate-pulse">Syncing from Relays...</p>}
+      {events.map((p: any) =>(
+        <Card key={p.id} className="relative">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-none flex items-center justify-center text-base border"
-              style={{background:`${C.leaf}10`,borderColor:`${C.leaf}22`}}>{p.img}</div>
+              style={{background:`${C.leaf}10`,borderColor:`${C.leaf}22`}}>🌿</div>
             <div className="flex-1">
-              <p className="text-xs font-semibold" style={{color:C.dew}}>{p.author}</p>
-              <p className="text-[9px]" style={{color:"#8c8c8c"}}>{p.time}</p>
+              <p className="text-[10px] font-semibold" style={{color:C.dew}}>
+                {nip19.npubEncode(p.pubkey).slice(0, 16)}...
+              </p>
+              <p className="text-[8px] uppercase tracking-widest leading-[12px] opacity-60" style={{color:"#8c8c8c"}}>
+                {new Date(p.created_at * 1000).toLocaleString()}
+              </p>
             </div>
-            <div className="flex gap-1 items-center">
-              <StorageBadge type={p.storage||"ipfs"}/>
-              <button onClick={()=>setReportMenu(reportMenu===p.id?null:p.id)}
-                className="w-6 h-6 rounded-none flex items-center justify-center text-sm cursor-pointer border"
-                style={{background:"transparent",borderColor:"rgba(255,255,255,0.06)",color:"#595959"}}>
-                ⋮
-              </button>
+            <div className="flex gap-1 items-center opacity-60">
+              <StorageBadge type="nostr"/>
             </div>
           </div>
 
-          {reportMenu===p.id&&(
-            <div className="absolute right-3 top-10 rounded-none border p-2 z-10 w-44"
-              style={{background:"#0d100d",borderColor:`${C.red}30`}}>
-              <p className="text-[9px] uppercase tracking-widest px-2 pb-1 mb-1 border-b"
-                style={{color:C.red,borderColor:`${C.red}20`}}>Report Post</p>
-              {REPORT_REASONS.map(r=>(
-                <button key={r} onClick={()=>doReport(p,r)}
-                  className="w-full text-left py-1.5 px-2 rounded-none text-xs cursor-pointer"
-                  style={{background:"transparent",border:"none",color:"#e0e0e0",fontFamily:"inherit"}}>
-                  {r}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <p className="text-xs leading-relaxed mb-3" style={{color:"#e0e0e0", whiteSpace:"pre-wrap"}}>{p.content}</p>
-          {p.imageStr && (
-             <img src={p.imageStr} className="w-full rounded-none mb-3 border" style={{borderColor:C.line, objectFit:"cover", maxHeight:"300px"}} />
-          )}
-          {p.audioStr && (
-             <audio controls src={p.audioStr} className="w-full h-8 mb-3" style={{borderRadius:"0px", outline:"none"}} />
-          )}
+          <p className="text-xs leading-relaxed mb-4" style={{color:"#e0e0e0", whiteSpace:"pre-wrap"}}>{p.content}</p>
 
           <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-            {p.tags?.map((t,i)=><span key={i} className="text-[9px]" style={{color:"#595959"}}>#{t}</span>)}
+            {p.tags?.filter((t: any[]) => t[0] === 't').map((t: any[],i: number)=><span key={i} className="text-[9px] px-1.5 py-0.5 border" style={{color:C.leaf, borderColor: `${C.leaf}40`}}>#{t[1]}</span>)}
           </div>
           
           <div className="flex items-center justify-between pt-2 border-t" style={{borderColor:"rgba(255,255,255,0.06)"}}>
-            <button onClick={()=>doLike(p.id)}
-              style={{color:state.likedPosts[p.id]?C.red:"#8c8c8c",
-                background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",
-                fontSize:12,display:"flex",alignItems:"center",gap:4}}>
-              {state.likedPosts[p.id]?"❤️":"🤍"} <span className="text-[10px]">{p.likes}</span>
+            <button
+              style={{color:"#8c8c8c", background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",
+                fontSize:12,display:"flex",alignItems:"center",gap:4}} disabled>
+              🤍 <span className="text-[10px]">0</span>
             </button>
             <div className="flex gap-4">
-              <button style={{color:"#8c8c8c",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>💬</button>
-              <button style={{color:"#8c8c8c",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>↗</button>
+              <button style={{color:"#8c8c8c",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12}} disabled>💬</button>
+              <a href={`https://njump.me/${nip19.noteEncode(p.id)}`} target="_blank" rel="noreferrer" style={{color:"#8c8c8c",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12, textDecoration: 'none'}}>↗</a>
             </div>
           </div>
         </Card>
@@ -1798,9 +1731,40 @@ const GuideTab = memo(() => {
 });
 
 // ─── BIOMASS MAP ──────────────────────────────────────────────
-const MapTab = memo(({ onNodeSelect }) => {
+const MapTab = memo(({ onNodeSelect }: { onNodeSelect?: (id: string) => void }) => {
   const {state} = useStore();
   const font = SF(state.lang);
+  const [activeRoots, setActiveRoots] = useState(0);
+  const [verifiedBiomass, setVerifiedBiomass] = useState(0);
+
+  useEffect(() => {
+    let roots = new Set();
+    let biomass = 0;
+    const filters: any[] = [{ kinds: [1], '#t': ['GreenWeave'] }];
+    
+    const sub = pool.subscribeMany(
+      relays,
+      filters as any,
+      {
+        onevent(event) {
+          roots.add(event.pubkey);
+          setActiveRoots(roots.size);
+          
+          let eventValue = 0.5; // base fallback
+          const bTag = event.tags.find((t: any[]) => t[0] === 't' && t[1] === 'biomass');
+          if (bTag && bTag[2]) {
+             const val = parseFloat(bTag[2]);
+             if (!isNaN(val)) eventValue = val;
+          } else if (bTag) {
+             eventValue = 1;
+          }
+          biomass += eventValue;
+          setVerifiedBiomass(Math.round(biomass * 10) / 10);
+        }
+      }
+    );
+    return () => sub.close();
+  }, []);
 
   return (
     <div style={{fontFamily:font}} className="u1 h-full flex flex-col">
@@ -1860,11 +1824,11 @@ const MapTab = memo(({ onNodeSelect }) => {
            <div className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b border-white/5">
                  <span className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Active Roots</span>
-                 <span className="text-sm font-mono font-bold">142</span>
+                 <span className="text-sm font-mono font-bold">{activeRoots}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-white/5">
                  <span className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Verified Biomass</span>
-                 <span className="text-sm font-mono font-bold">1,824.5 kg</span>
+                 <span className="text-sm font-mono font-bold">{verifiedBiomass.toLocaleString()} kg</span>
               </div>
            </div>
         </div>
@@ -1896,7 +1860,7 @@ function AppShell() {
   const [tab,setTab] = useState("feed");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [connected,setConnected] = useState(false);
-  const { user, profile, loginNip07, loginPrivateKey, loginRemote, loginReadOnly, error: nostrError, loading: nostrLoading } = useNostr();
+  const { user, pubkey, npub, profile, relayConnected, loginNip07, loginPrivateKey, loginRemote, loginReadOnly, error: nostrError, loading: nostrLoading } = useNostr();
   const { saveNwc } = useLightning();
 
   const connect    = useCallback(w=>{dispatch({type:"CONNECT",payload:w});setConnected(true);},[dispatch]);
@@ -1925,13 +1889,16 @@ function AppShell() {
           <div className="flex items-center gap-4">
             <span style={{fontSize:20, color:C.leaf}}>⧫</span>
             <div className="flex items-center gap-3">
-              <p style={{fontFamily:DF,fontSize:18,color:C.leaf,letterSpacing:3,lineHeight:1,fontStyle:"italic"}}>GREEN WEAVE</p>
+               <div className="flex items-center gap-1.5" title={relayConnected ? "Connected to relays" : "Connecting to relays..."}>
+                 <div className={`w-1.5 h-1.5 rounded-full ${relayConnected ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-red-500'} transition-colors duration-1000 animate-pulse`}></div>
+                 <p style={{fontFamily:DF,fontSize:18,color:C.leaf,letterSpacing:3,lineHeight:1,fontStyle:"italic"}}>GREEN WEAVE</p>
+               </div>
               <div className="h-4 w-[1px] bg-white/10 hidden sm:block"></div>
               <p className="text-[10px] uppercase tracking-[2px] opacity-40 hidden sm:block">greenweave.org</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {!user ? (
+            {!user && !pubkey ? (
                <button onClick={() => dispatch({ type: "SET_MODAL", modal: "isConnectOpen", open: true })} disabled={nostrLoading}
                  className="px-3 py-1.5 text-[9px] uppercase tracking-[2px] font-bold border rounded-none hover:bg-white/5"
                  style={{borderColor:C.line, color:C.leaf}}>
@@ -1940,12 +1907,11 @@ function AppShell() {
             ) : (
                <div className="flex items-center gap-3 px-3 py-1.5 border" style={{borderColor:C.line, background:C.ghost}}>
                   <div className="w-5 h-5 overflow-hidden border" style={{borderColor:C.leaf}}>
-                     <img src={profile?.image || `https://robohash.org/${user.pubkey}`} className="w-full h-full object-cover" />
+                     <img src={profile?.image || `https://robohash.org/${pubkey || user?.pubkey}`} className="w-full h-full object-cover" />
                   </div>
                   <p className="text-[9px] uppercase tracking-widest font-bold" style={{color:C.leaf}}>
-                     {profile?.name || user.npub.slice(0,8)}
+                     {profile?.name || (npub || user?.npub)?.slice(0,8) || "ANON"}
                   </p>
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981]"></div>
                </div>
             )}
             {state.wallet&&(

@@ -11,6 +11,7 @@ export function useNostr() {
   const [pubkey, setPubkey] = useState<string | null>(null);
   const [npub, setNpub] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [relayConnected, setRelayConnected] = useState<boolean>(false);
   
   const [user, setUser] = useState<NDKUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -28,6 +29,11 @@ export function useNostr() {
 
   useEffect(() => {
     ndk.connect().catch(err => console.error("NDK Connect Error", err));
+    
+    ndk.pool.on('relay:connect', () => setRelayConnected(true));
+    ndk.pool.on('relay:disconnect', () => {
+      if (ndk.pool.stats().connected === 0) setRelayConnected(false);
+    });
     
     // Auto-Reconnect Logic: Restore session gracefully
     const savedPubkey = localStorage.getItem('nostr_pubkey');
@@ -205,6 +211,7 @@ export function useNostr() {
     pubkey,
     npub,
     isAuthenticated,
+    relayConnected,
     user,
     profile,
     loading,
