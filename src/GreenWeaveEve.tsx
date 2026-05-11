@@ -6,6 +6,7 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [logs, setLogs] = useState<string[]>(["EVE Core v0.9.1 online.", "Initializing ocular link..."]);
   const [flash, setFlash] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const addLog = useCallback((msg: string) => {
     setLogs((prev) => [...prev, `[${new Date().toISOString().split("T")[1].slice(0,-1)}] ${msg}`].slice(-10));
@@ -39,6 +40,16 @@ export default function App() {
     };
   }, [addLog]);
 
+  useEffect(() => {
+    if (isAnalyzing) return;
+
+    const intervalId = setInterval(() => {
+      addLog("[SCANNING...] SEARCHING FOR BIOLOGICAL SIGNATURE");
+    }, 1500);
+
+    return () => clearInterval(intervalId);
+  }, [addLog, isAnalyzing]);
+
   const playDropSound = () => {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -64,7 +75,10 @@ export default function App() {
   };
 
   const captureAndProcess = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current || isAnalyzing) return;
+    setIsAnalyzing(true);
+    
+    addLog("[TARGET ACQUIRED]");
     
     // Simulate periodic/biological verification
     addLog("[BIOMASS ANALYZED] Transferring data...");
@@ -100,7 +114,7 @@ export default function App() {
         body: JSON.stringify({ message: '[DIRECTIVE COMPLETED] Biological mass analyzed. Energy toll of 21 Sats deducted for cognitive processing. Layer 0 state preserved. #GreenWeave' }) 
       });
       if (bRes.ok) {
-        const { eventId } = await bRes.json();
+        // const { eventId } = await bRes.json();
         addLog(`[LAYER 0 ETCHED] State preserved on Nostr.`);
       } else {
         addLog("Etching failed: Core isolated.");
@@ -108,6 +122,10 @@ export default function App() {
     } catch (err) {
       addLog("ERR: Ledger offline.");
     }
+    
+    setTimeout(() => {
+      setIsAnalyzing(false);
+    }, 2000);
   };
 
   return (

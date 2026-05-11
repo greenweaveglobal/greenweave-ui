@@ -1,15 +1,36 @@
 import { useState } from "react";
 import GreenWeaveEve from "./GreenWeaveEve";
 
+declare global {
+  interface Window {
+    nostr?: any;
+  }
+}
+
 export default function App() {
   const [showEve, setShowEve] = useState(false);
   const [fading, setFading] = useState(false);
+  const [pubkey, setPubkey] = useState<string | null>(null);
 
   const handleTranscend = () => {
     setFading(true);
     setTimeout(() => {
       setShowEve(true);
     }, 1200); // 1.2s smooth fade
+  };
+
+  const handleNip07Connect = async () => {
+    if (window.nostr) {
+      try {
+        const key = await window.nostr.getPublicKey();
+        setPubkey(key);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to connect Nostr identity.");
+      }
+    } else {
+      alert("Nostr extension not found.");
+    }
   };
 
   if (showEve) {
@@ -49,10 +70,11 @@ export default function App() {
 
         {/* NIP-07 Connect Button (Decorative for now, as requested) */}
         <button 
+          onClick={handleNip07Connect}
           className="w-full py-4 mb-6 relative group overflow-hidden border border-amber-500/70 bg-amber-500/10 hover:bg-amber-500/20 transition-all duration-300 shadow-[0_0_20px_rgba(245,158,11,0.1)] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] cursor-pointer backdrop-blur-sm"
         >
            <span className="relative z-10 text-xs font-bold uppercase tracking-[0.2em] text-amber-400 group-hover:text-amber-300 transition-colors drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]">
-             Connect Identity (NIP-07)
+             {pubkey ? `CONNECTED: npub1…` : "Connect Identity (NIP-07)"}
            </span>
         </button>
 
