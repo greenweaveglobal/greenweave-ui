@@ -21,6 +21,9 @@ export default function App() {
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().catch(e => console.log('Auto-play prevented:', e));
+          };
         }
         addLog("Ocular link established.");
       } catch (err: any) {
@@ -111,12 +114,13 @@ export default function App() {
     <div className="relative w-screen h-screen bg-black overflow-hidden select-none font-mono">
       {/* The Ocular Feed */}
       <video
-        ref={videoRef}
         autoPlay
         playsInline
         muted
+        ref={videoRef}
         onClick={captureAndProcess}
-        className="absolute inset-0 w-full h-full object-cover z-0 filter contract-125 saturate-50 brightness-75 sepia-[20%]"
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        style={{ filter: 'contrast(1.25) saturate(0.5) brightness(0.75) sepia(0.2)' }}
       />
       <canvas ref={canvasRef} className="hidden" />
 
