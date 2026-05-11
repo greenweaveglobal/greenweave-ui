@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GreenWeaveEve from "./GreenWeaveEve";
 
 declare global {
@@ -14,6 +14,17 @@ export default function App() {
   const [isIdentityConnected, setIsIdentityConnected] = useState(false);
   const [activeTab, setActiveTab] = useState<'HOME' | 'MAP' | 'FEED' | 'ME'>('HOME');
 
+  useEffect(() => {
+    const handleAuth = (e: any) => {
+      if (e.detail.type === 'login' || e.detail.type === 'signup') {
+        setPubkey(e.detail.pubkey);
+        setIsIdentityConnected(true);
+      }
+    };
+    document.addEventListener('nlAuth', handleAuth);
+    return () => document.removeEventListener('nlAuth', handleAuth);
+  }, []);
+
   const handleTranscend = () => {
     setFading(true);
     setTimeout(() => {
@@ -22,18 +33,7 @@ export default function App() {
   };
 
   const handleNip07Connect = async () => {
-    if (window.nostr) {
-      try {
-        const key = await window.nostr.getPublicKey();
-        setPubkey(key);
-        setIsIdentityConnected(true);
-      } catch (err) {
-        console.error(err);
-        alert("Failed to connect Nostr identity: " + (err as Error).message);
-      }
-    } else {
-      alert("Nostr extension not found.");
-    }
+    document.dispatchEvent(new CustomEvent('nlLaunch', { detail: 'welcome' }));
   };
 
   if (showEve) {
