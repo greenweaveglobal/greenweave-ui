@@ -160,7 +160,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
   };
 
   return (
-    <div className="relative w-screen h-screen bg-black overflow-hidden select-none font-mono">
+    <div className="relative w-screen h-[100dvh] bg-black overflow-hidden select-none font-mono">
       {/* The Ocular Feed */}
       <video
         autoPlay
@@ -178,7 +178,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
 
       {/* Crosshair / Reticle */}
       {status === 'SCANNING' && (
-        <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
+        <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center pb-20">
           <div className="w-24 h-24 border-[1px] border-white/20 relative animate-pulse">
              <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#50C878]"></div>
              <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#50C878]"></div>
@@ -192,7 +192,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
 
       {/* Analyzing Animation */}
       {status === 'ANALYZING' && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm pb-20">
           <div className="w-32 h-1 bg-[#50C878]/20 relative overflow-hidden mb-4">
             <div className="absolute inset-0 bg-[#50C878] animate-[ping_1.5s_infinite] shadow-[0_0_15px_#50C878]"></div>
           </div>
@@ -202,45 +202,45 @@ export default function Scanner({ onAddLog }: ScannerProps) {
         </div>
       )}
 
-      {/* Result Card Overlay */}
+      {/* Result Card Overlay - High Contrast */}
       {status === 'RESULT' && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
-          <div className="w-full max-w-sm bg-black/90 border border-[#50C878]/40 p-6 shadow-[0_0_40px_rgba(80,200,120,0.2)] backdrop-blur-xl">
-            <div className="flex justify-between items-start mb-6">
-              <div className="text-[10px] text-white/40 uppercase tracking-widest">[ TARGET IDENTIFIED ]</div>
-              <div className="w-2 h-2 bg-[#50C878] animate-pulse shadow-[0_0_8px_#50C878]"></div>
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-6 pb-24 animate-in fade-in zoom-in duration-300 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-zinc-950 border-4 border-[#39FF14] p-8 shadow-[0_0_60px_rgba(0,0,0,1)]">
+            <div className="flex justify-between items-start mb-8">
+              <div className="text-xs text-white font-black uppercase tracking-[0.2em] border-b-2 border-[#39FF14]/40 pb-1">[ TARGET IDENTIFIED ]</div>
+              <div className="w-4 h-4 bg-[#39FF14] shadow-[0_0_15px_#39FF14]"></div>
             </div>
 
-            <div className="space-y-4 mb-8">
+            <div className="space-y-6 mb-10">
               <div>
-                <div className="text-[8px] text-[#50C878] uppercase mb-1 opacity-60">Species</div>
-                <div className="text-xl text-[#50C878] font-bold tracking-wider">Musa (Banana Tree)</div>
+                <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1 tracking-widest">Biological Species</div>
+                <div className="text-3xl text-white font-black tracking-tight leading-none uppercase">Musa <span className="text-[#39FF14] block mt-1">(Banana Tree)</span></div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/10">
                 <div>
-                  <div className="text-[8px] text-[#50C878] uppercase mb-1 opacity-60">Confidence</div>
-                  <div className="text-sm text-white/90">98.7%</div>
+                  <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1">Confidence</div>
+                  <div className="text-lg text-white font-black">98.7%</div>
                 </div>
                 <div>
-                  <div className="text-[8px] text-[#50C878] uppercase mb-1 opacity-60">Biomass</div>
-                  <div className="text-sm text-white/90 font-bold text-[#50C878]">VERIFIED</div>
+                  <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1">Status</div>
+                  <div className="text-lg text-[#39FF14] font-black">VERIFIED</div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <button 
                 onClick={handleBroadcast}
                 disabled={isProcessing}
-                className="w-full py-4 bg-[#50C878]/10 border border-[#50C878]/60 hover:bg-[#50C878]/20 text-[#50C878] text-xs font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50"
+                className="w-full py-5 bg-[#39FF14] text-black text-sm font-black uppercase tracking-[0.25em] transition-all active:scale-95 disabled:opacity-50"
               >
-                {isProcessing ? "[ ETCHING... ]" : "[ BROADCAST TO NOSTR ]"}
+                {isProcessing ? "[ ETCHING... ]" : "[ BROADCAST ]"}
               </button>
               <button 
                 onClick={handleRescan}
                 disabled={isProcessing}
-                className="w-full py-2 border border-white/10 text-white/40 text-[10px] uppercase tracking-widest hover:text-white/80 transition-all disabled:opacity-0"
+                className="w-full py-3 border-2 border-white/40 text-white text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all disabled:opacity-0"
               >
                 [ DISCARD / RESCAN ]
               </button>
@@ -252,19 +252,19 @@ export default function Scanner({ onAddLog }: ScannerProps) {
       {/* Fixed UI Components */}
       <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-white/30 z-20" />
       <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-white/30 z-20" />
-      <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-white/30 z-20" />
+      <div className="absolute bottom-24 right-4 w-4 h-4 border-b-2 border-r-2 border-white/30 z-20" />
       
       {/* System Status Top Right */}
-      <div className="absolute top-4 right-4 text-[8px] text-[#50C878] uppercase tracking-widest z-30 opacity-70 text-right mix-blend-screen drop-shadow-md">
+      <div className="absolute top-6 right-6 text-xs text-[#39FF14] font-black uppercase tracking-[0.2em] z-30 mix-blend-screen text-right">
         <div>LAYER 0</div>
-        <div>{new Date().toISOString().split("T")[0]}</div>
-        <div className="text-[6px] mt-1 opacity-40 italic">{status}</div>
+        <div className="text-white">{new Date().toISOString().split("T")[0]}</div>
+        <div className="text-[10px] mt-2 bg-black/80 px-2 py-0.5 border border-[#39FF14]/40 font-bold">{status}</div>
       </div>
 
-      {/* Terminal Overlay */}
-      <div className="absolute bottom-8 left-4 z-30 pointer-events-none text-[#50C878] text-[8px] uppercase tracking-widest leading-relaxed drop-shadow-[0_0_2px_rgba(80,200,120,0.8)] mix-blend-screen max-w-[80vw]">
+      {/* Terminal Overlay - Bold & Sharp */}
+      <div className="absolute bottom-24 left-6 z-30 pointer-events-none text-[#39FF14] text-[10px] font-bold uppercase tracking-wider leading-relaxed max-w-[85vw]">
         {logs.map((L, i) => (
-          <div key={i} className={`drop-shadow-md ${i === logs.length - 1 ? 'opacity-100 font-bold' : 'opacity-60'}`}>
+          <div key={i} className={`mb-1 ${i === logs.length - 1 ? 'opacity-100 text-sm font-black' : 'opacity-90'}`}>
             {L}
           </div>
         ))}
@@ -272,16 +272,16 @@ export default function Scanner({ onAddLog }: ScannerProps) {
 
       {/* Scanning Controls */}
       {status === 'SCANNING' && (
-        <div className="absolute bottom-10 left-0 right-0 z-40 flex justify-center">
+        <div className="absolute bottom-28 left-0 right-0 z-40 flex justify-center">
           <button 
             onClick={handleLockTarget}
-            className="group relative w-16 h-16 border-2 border-[#50C878]/50 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all hover:scale-110 active:scale-95 shadow-[0_0_20px_rgba(80,200,120,0.2)]"
+            className="group relative w-20 h-20 border-4 border-[#39FF14] rounded-full flex items-center justify-center bg-zinc-900 transition-all hover:scale-110 active:scale-95 shadow-[0_0_30px_rgba(57,255,20,0.4)]"
           >
-            <div className="w-8 h-8 border border-[#50C878] rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 bg-[#50C878] rounded-full animate-pulse"></div>
+            <div className="w-10 h-10 border-2 border-[#39FF14] rounded-full flex items-center justify-center">
+              <div className="w-4 h-4 bg-[#39FF14] rounded-full animate-pulse shadow-[0_0_10px_#39FF14]"></div>
             </div>
-            <div className="absolute -bottom-8 whitespace-nowrap text-[8px] uppercase tracking-[0.4em] text-[#50C878]/70 group-hover:text-[#50C878]">
-              Lock Target
+            <div className="absolute -bottom-10 whitespace-nowrap text-xs font-black uppercase tracking-[0.3em] text-[#39FF14]">
+              [ LOCK TARGET ]
             </div>
           </button>
         </div>
