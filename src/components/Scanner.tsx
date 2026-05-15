@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { GoogleGenAI, Type } from "@google/genai";
+import { Relay } from "nostr-tools";
 
 type ScannerStatus = "SCANNING" | "ANALYZING" | "RESULT";
 
@@ -184,51 +185,70 @@ export default function Scanner({ onAddLog }: ScannerProps) {
     setIsProcessing(true);
     
     addLog("[INITIATING BROADCAST SEQUENCE]");
-    addLog(`[${analysisResult.species.toUpperCase()} VERIFIED] Transferring data...`);
+    addLog(`[${analysisResult.species.toUpperCase()} VERIFIED] Preparing cryptographic payload...`);
     
     setFlash(true);
     playOcularSound('zap');
     setTimeout(() => setFlash(false), 200);
 
-    // Call ZAP Route
-    try {
-      const zapRes = await fetch('/api/zap', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ amountSats: 21 }) 
-      });
-      if (zapRes.ok) {
-        addLog("[ENERGY TOLL DEDUCTED] 21 Sats routed.");
-      } else {
-        addLog("ZAP failed: Check connection profile.");
-      }
-    } catch (err) {
-      addLog("ERR: ZAP network offline.");
-    }
-
-    // Call Broadcast Route
-    try {
-      const bRes = await fetch('/api/broadcast', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ 
-          message: `[DIRECTIVE COMPLETED] ${analysisResult.species} (Confidence: ${analysisResult.confidence}%) analyzed. Energy toll of 21 Sats deducted. #GreenWeave` 
-        }) 
-      });
-      if (bRes.ok) {
-        addLog(`[LAYER 0 ETCHED] State preserved on Nostr.`);
-      } else {
-        addLog("Etching failed.");
-      }
-    } catch (err) {
-      addLog("ERR: Ledger offline.");
-    }
+    // 1. Construct the Note Content
+    const content = `🌿 [ LAYER 0 BIOMASS VERIFIED ]\nTarget: ${analysisResult.species}\nConfidence: ${analysisResult.confidence}%\n${analysisResult.description}\n\n#GreenWeave #Biomass #Cypherpunk`;
     
-    setIsProcessing(false);
-    // After broadcast, return to scanning after a delay
-    setTimeout(() => {
-      handleRescan();
-    }, 2000);
+    const eventTemplate = {
+      kind: 1,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['t', 'GreenWeave'],
+        ['t', 'Biomass'],
+        ['t', 'Cypherpunk']
+      ],
+      content: content,
+    };
+
+    try {
+      // 2. Request Signature via NIP-07
+      if (!(window as any).nostr) {
+        throw new Error("NOSTR SIGNER (NIP-07) NOT DETECTED");
+      }
+
+      addLog("[TRANSMITTING TO CRYPTO-SIGNER...]");
+      const signedEvent = await (window as any).nostr.signEvent(eventTemplate);
+      addLog("[SIGNATURE VERIFIED]");
+
+      // 3. Broadcast to Relays
+      addLog("[BROADCASTING TO RELAYS...]");
+      const relays = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+      let successfulPublishes = 0;
+
+      const publishPromises = relays.map(async (url) => {
+        try {
+          const relay = await Relay.connect(url);
+          await relay.publish(signedEvent);
+          successfulPublishes++;
+          relay.close();
+          addLog(`[RELAY-OK] ${url.replace('wss://', '')}`);
+        } catch (e) {
+          console.error(`Relay failure: ${url}`, e);
+        }
+      });
+
+      await Promise.allSettled(publishPromises);
+
+      if (successfulPublishes > 0) {
+        addLog(`[BIOMASS PERMANENTLY ETCHED] SUCCESSFUL ON ${successfulPublishes} RELAYS.`);
+      } else {
+        throw new Error("RELAY BROADCAST FAILED");
+      }
+
+    } catch (err: any) {
+      addLog(`[TRANSMISSION ABORTED] ${err.message}`);
+    } finally {
+      setIsProcessing(false);
+      // Wait for user to read final logs before reset
+      setTimeout(() => {
+        handleRescan();
+      }, 4000);
+    }
   };
 
   const handleRescan = () => {
