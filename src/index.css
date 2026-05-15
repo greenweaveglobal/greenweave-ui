@@ -12,6 +12,14 @@
   --animate-shake: shake 0.2s ease-in-out infinite;
 }
 
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   body {
     @apply antialiased bg-[#050505] text-[#e0e0e0] font-sans;

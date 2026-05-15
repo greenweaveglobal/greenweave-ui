@@ -66,7 +66,7 @@ export default function App() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-black to-black opacity-50 pointer-events-none" />
 
       {/* Main Content Area */}
-      <main className={`relative z-10 flex-1 w-full flex flex-col items-center p-6 pb-[120px] ${activeTab === 'HOME' ? 'justify-center' : 'justify-start'}`}>
+      <main className={`relative z-10 flex-1 w-full min-h-0 flex flex-col items-center p-6 pb-[120px] ${activeTab === 'HOME' ? 'justify-center' : 'justify-start'}`}>
         
         {activeTab === 'HOME' && (
           <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in zoom-in-95 duration-500">

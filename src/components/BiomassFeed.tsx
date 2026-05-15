@@ -12,7 +12,7 @@ const MOCK_FEED = [
     timestamp: "2 HOURS AGO",
     description: "High biomass density detected. Vital carbon sink active.",
     energyToll: 21,
-    image: "https://images.unsplash.com/photo-1598112972545-84373a441112?auto=format&fit=crop&w=800&q=80"
+    image: "https://images.unsplash.com/photo-1598112972545-84373a441112?q=80&w=800&auto=format&fit=crop"
   },
   {
     id: "2",
@@ -23,7 +23,7 @@ const MOCK_FEED = [
     timestamp: "5 HOURS AGO",
     description: "Ancient biological reservoir preserved. Connectivity stable.",
     energyToll: 42,
-    image: "https://images.unsplash.com/photo-1518384401463-d38760fa6fca?auto=format&fit=crop&w=800&q=80"
+    image: "https://images.unsplash.com/photo-1518384401463-d38760fa6fca?q=80&w=800&auto=format&fit=crop"
   },
   {
     id: "3",
@@ -34,7 +34,7 @@ const MOCK_FEED = [
     timestamp: "8 HOURS AGO",
     description: "Massive carbon sequestration unit verified. Structural integrity optimal.",
     energyToll: 84,
-    image: "https://images.unsplash.com/photo-1542316496-e263004d80be?auto=format&fit=crop&w=800&q=80"
+    image: "https://images.unsplash.com/photo-1542316496-e263004d80be?q=80&w=800&auto=format&fit=crop"
   }
 ];
 
@@ -42,7 +42,7 @@ export default function BiomassFeed() {
   const [activeZapTarget, setActiveZapTarget] = useState<string | null>(null);
 
   return (
-    <div className="w-full max-w-sm h-full flex flex-col pt-4 overflow-hidden animate-in fade-in duration-500">
+    <div className="w-full max-w-sm flex-1 flex flex-col pt-4 overflow-hidden animate-in fade-in duration-500">
       <div className="px-4 text-xs font-black text-amber-500/40 mb-6 uppercase tracking-widest flex items-center gap-2 flex-shrink-0">
         <div className="w-2 h-2 rounded-full bg-[#39FF14] animate-pulse" />
         LIVE BIOMASS STREAM: LAYER 0 - VERIFIED
