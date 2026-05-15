@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Scanner from "./components/Scanner";
 import ProfileDashboard from "./components/ProfileDashboard";
+import BiomassFeed from "./components/BiomassFeed";
 import { nip19 } from "nostr-tools";
 import { logout } from "nostr-login";
 
@@ -65,7 +66,7 @@ export default function App() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-black to-black opacity-50 pointer-events-none" />
 
       {/* Main Content Area */}
-      <main className="relative z-10 flex-1 w-full flex flex-col items-center justify-center p-6 pb-[120px]">
+      <main className={`relative z-10 flex-1 w-full flex flex-col items-center p-6 pb-[120px] ${activeTab === 'HOME' ? 'justify-center' : 'justify-start'}`}>
         
         {activeTab === 'HOME' && (
           <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in zoom-in-95 duration-500">
@@ -107,9 +108,7 @@ export default function App() {
         )}
 
         {activeTab === 'FEED' && (
-          <div className="text-sm font-bold tracking-[0.3em] text-amber-400 uppercase animate-in fade-in duration-500 bg-amber-950/20 px-8 py-4 border border-amber-500/30">
-            [ Feed Module Offline ]
-          </div>
+          <BiomassFeed />
         )}
 
         {activeTab === 'ME' && (

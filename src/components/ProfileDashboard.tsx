@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import ZapModal from "./ZapModal";
+import { Zap } from "lucide-react";
 
 interface ProfileDashboardProps {
   isIdentityConnected: boolean;
@@ -37,6 +39,8 @@ export default function ProfileDashboard({
     localStorage.removeItem('gemini_api_key');
     setHasApiKey(false);
   };
+
+  const [isZapModalOpen, setIsZapModalOpen] = useState(false);
 
   if (!isIdentityConnected) {
     return (
@@ -136,7 +140,7 @@ export default function ProfileDashboard({
       <div className="text-xs font-bold text-amber-500/80 mb-3 uppercase tracking-widest">
         BIOMASS PORTFOLIO:
       </div>
-      <div className="grid grid-cols-2 gap-4 w-full mb-10">
+      <div className="grid grid-cols-2 gap-4 w-full mb-8">
         <div className="border-2 border-amber-500/30 p-5 bg-zinc-900 flex flex-col shadow-lg">
           <div className="text-3xl font-black text-amber-400 mb-1">0</div>
           <div className="text-[10px] font-black uppercase tracking-widest text-white">Signs Cataloged</div>
@@ -145,6 +149,20 @@ export default function ProfileDashboard({
           <div className="text-3xl font-black text-amber-400 mb-1">21</div>
           <div className="text-[10px] font-black uppercase tracking-widest text-white">Sats Rooted</div>
         </div>
+      </div>
+
+      {/* Zap Button */}
+      <div className="w-full mb-10">
+        <button 
+          onClick={() => setIsZapModalOpen(true)}
+          className="w-full py-5 bg-yellow-500 text-black font-black text-sm uppercase tracking-[0.25em] transition-all active:scale-95 shadow-[0_0_20px_rgba(234,179,8,0.3)] flex items-center justify-center gap-3 border-2 border-yellow-400 group"
+        >
+          <Zap size={20} fill="black" className="group-hover:animate-pulse" />
+          [ ZAP SATS ⚡️ ]
+        </button>
+        <p className="text-[10px] text-zinc-500 font-bold mt-2 text-center uppercase tracking-wider">
+          Support the GreenWeave Genesis Node
+        </p>
       </div>
 
       <button 
@@ -157,6 +175,12 @@ export default function ProfileDashboard({
       <div className="text-[10px] font-bold text-amber-500/40 mb-4 uppercase tracking-widest text-center w-full">
         v0.9.1.5-SECURE
       </div>
+
+      <ZapModal 
+        isOpen={isZapModalOpen} 
+        onClose={() => setIsZapModalOpen(false)} 
+        targetName="GreenWeave Genesis Node"
+      />
     </div>
   );
 }
