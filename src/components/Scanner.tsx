@@ -13,6 +13,12 @@ export default function Scanner({ onAddLog }: ScannerProps) {
   const [flash, setFlash] = useState(false);
   const [status, setStatus] = useState<ScannerStatus>("SCANNING");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{
+    species: string;
+    confidence: number;
+    isBiomass: boolean;
+    description: string;
+  } | null>(null);
 
   const addLog = useCallback((msg: string) => {
     const timestamp = new Date().toISOString().split("T")[1].slice(0, -1);
@@ -91,22 +97,53 @@ export default function Scanner({ onAddLog }: ScannerProps) {
     playOcularSound('lock');
     setStatus("ANALYZING");
     addLog("[TARGET ACQUIRED]");
-    addLog("[ANALYZING BIOLOGICAL SIGNATURE...]");
+    addLog("[EXTRACTING FRAME FOR ANALYTICS...]");
     
     // Pause video to simulate "capture"
     if (videoRef.current) videoRef.current.pause();
 
-    await new Promise(r => setTimeout(r, 2000));
-    setStatus("RESULT");
-    addLog("[ANALYSIS COMPLETE] MATCH FOUND");
+    // Capture Frame
+    let base64Image = "";
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        base64Image = canvas.toDataURL('image/jpeg', 0.8);
+      }
+    }
+
+    try {
+      addLog("[SENDING TO GREENWEAVE AI CLUSTER...]");
+      const response = await fetch('/api/analyze-biomass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
+
+      if (!response.ok) throw new Error('AI Link Failure');
+
+      const data = await response.json();
+      setAnalysisResult(data);
+      setStatus("RESULT");
+      addLog(`[ANALYSIS COMPLETE] ${data.species.toUpperCase()} IDENTIFIED`);
+    } catch (err: any) {
+      console.error(err);
+      addLog(`ERR: AI Analysis Failed. ${err.message}`);
+      // Fallback or allow rescan
+      setTimeout(() => setStatus("SCANNING"), 3000);
+    }
   };
 
   const handleBroadcast = async () => {
-    if (isProcessing) return;
+    if (isProcessing || !analysisResult) return;
     setIsProcessing(true);
     
     addLog("[INITIATING BROADCAST SEQUENCE]");
-    addLog("[BIOMASS VERIFIED] Transferring data...");
+    addLog(`[${analysisResult.species.toUpperCase()} VERIFIED] Transferring data...`);
     
     setFlash(true);
     playOcularSound('zap');
@@ -134,7 +171,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-          message: '[DIRECTIVE COMPLETED] Musa (Banana Tree) analyzed. Energy toll of 21 Sats deducted. #GreenWeave' 
+          message: `[DIRECTIVE COMPLETED] ${analysisResult.species} (Confidence: ${analysisResult.confidence}%) analyzed. Energy toll of 21 Sats deducted. #GreenWeave` 
         }) 
       });
       if (bRes.ok) {
@@ -155,12 +192,16 @@ export default function Scanner({ onAddLog }: ScannerProps) {
 
   const handleRescan = () => {
     setStatus("SCANNING");
+    setAnalysisResult(null);
     if (videoRef.current) videoRef.current.play();
     addLog("[SYSTEM RESET] SCANNING RESUMED");
   };
 
   return (
     <div className="relative w-screen h-[100dvh] bg-black overflow-hidden select-none font-mono">
+      {/* Hidden Canvas for Frame Capture */}
+      <canvas ref={canvasRef} className="hidden" />
+
       {/* The Ocular Feed */}
       <video
         autoPlay
@@ -197,13 +238,13 @@ export default function Scanner({ onAddLog }: ScannerProps) {
             <div className="absolute inset-0 bg-[#50C878] animate-[ping_1.5s_infinite] shadow-[0_0_15px_#50C878]"></div>
           </div>
           <div className="text-[#50C878] text-[10px] tracking-[0.4em] uppercase animate-pulse">
-            Analysis in progress...
+            AI Cluster analyzing frame...
           </div>
         </div>
       )}
 
       {/* Result Card Overlay - High Contrast */}
-      {status === 'RESULT' && (
+      {status === 'RESULT' && analysisResult && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-6 pb-24 animate-in fade-in zoom-in duration-300 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-zinc-950 border-4 border-[#39FF14] p-8 shadow-[0_0_60px_rgba(0,0,0,1)]">
             <div className="flex justify-between items-start mb-8">
@@ -214,17 +255,23 @@ export default function Scanner({ onAddLog }: ScannerProps) {
             <div className="space-y-6 mb-10">
               <div>
                 <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1 tracking-widest">Biological Species</div>
-                <div className="text-3xl text-white font-black tracking-tight leading-none uppercase">Musa <span className="text-[#39FF14] block mt-1">(Banana Tree)</span></div>
+                <div className="text-3xl text-white font-black tracking-tight leading-none uppercase">
+                  {analysisResult.species.split(' ')[0]} 
+                  <span className="text-[#39FF14] block mt-1">({analysisResult.species.split(' ').slice(1).join(' ') || 'Plant'})</span>
+                </div>
+                <p className="text-[10px] text-white/60 font-bold mt-2 uppercase leading-tight italic">
+                  {analysisResult.description}
+                </p>
               </div>
               
               <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/10">
                 <div>
                   <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1">Confidence</div>
-                  <div className="text-lg text-white font-black">98.7%</div>
+                  <div className="text-lg text-white font-black">{analysisResult.confidence}%</div>
                 </div>
                 <div>
                   <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1">Status</div>
-                  <div className="text-lg text-[#39FF14] font-black">VERIFIED</div>
+                  <div className="text-lg text-[#39FF14] font-black">{analysisResult.isBiomass ? 'VERIFIED' : 'FAILED'}</div>
                 </div>
               </div>
             </div>
@@ -232,7 +279,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
             <div className="space-y-4">
               <button 
                 onClick={handleBroadcast}
-                disabled={isProcessing}
+                disabled={isProcessing || !analysisResult.isBiomass}
                 className="w-full py-5 bg-[#39FF14] text-black text-sm font-black uppercase tracking-[0.25em] transition-all active:scale-95 disabled:opacity-50"
               >
                 {isProcessing ? "[ ETCHING... ]" : "[ BROADCAST ]"}
