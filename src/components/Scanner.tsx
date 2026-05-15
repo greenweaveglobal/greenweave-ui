@@ -15,6 +15,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
   const [flash, setFlash] = useState(false);
   const [status, setStatus] = useState<ScannerStatus>("SCANNING");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [signatureError, setSignatureError] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{
     species: string;
     confidence: number;
@@ -192,7 +193,8 @@ export default function Scanner({ onAddLog }: ScannerProps) {
     setTimeout(() => setFlash(false), 200);
 
     // 1. Construct the Note Content
-    const content = `🌿 [ LAYER 0 BIOMASS VERIFIED ]\nTarget: ${analysisResult.species}\nConfidence: ${analysisResult.confidence}%\n${analysisResult.description}\n\n#GreenWeave #Biomass #Cypherpunk`;
+    const dispConfidence = (analysisResult.confidence * 100).toFixed(1) + '%';
+    const content = `🌿 [ LAYER 0 BIOMASS VERIFIED ]\nTarget: ${analysisResult.species}\nConfidence: ${dispConfidence}\n${analysisResult.description}\n\n#GreenWeave #Biomass #Cypherpunk`;
     
     const eventTemplate = {
       kind: 1,
@@ -236,18 +238,28 @@ export default function Scanner({ onAddLog }: ScannerProps) {
 
       if (successfulPublishes > 0) {
         addLog(`[BIOMASS PERMANENTLY ETCHED] SUCCESSFUL ON ${successfulPublishes} RELAYS.`);
+        
+        setIsProcessing(false);
+        // Success case - go back to scanning
+        setTimeout(() => {
+          handleRescan();
+        }, 4000);
       } else {
         throw new Error("RELAY BROADCAST FAILED");
       }
 
     } catch (err: any) {
       addLog(`[TRANSMISSION ABORTED] ${err.message}`);
-    } finally {
+      setSignatureError(true);
       setIsProcessing(false);
-      // Wait for user to read final logs before reset
+      
+      // Prompt user about bunker
+      alert("WARNING: Bunker connection failed. Please ensure your key storage app (e.g., nsec.app) is open in another tab, allow popups, and try again.");
+      
+      // Revert button status after 3 seconds
       setTimeout(() => {
-        handleRescan();
-      }, 4000);
+        setSignatureError(false);
+      }, 3000);
     }
   };
 
@@ -328,7 +340,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
               <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/10">
                 <div>
                   <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1">Confidence</div>
-                  <div className="text-lg text-white font-black">{analysisResult.confidence}%</div>
+                  <div className="text-lg text-white font-black">{(analysisResult.confidence * 100).toFixed(1)}%</div>
                 </div>
                 <div>
                   <div className="text-[10px] text-[#39FF14] font-black uppercase mb-1">Status</div>
@@ -341,9 +353,11 @@ export default function Scanner({ onAddLog }: ScannerProps) {
               <button 
                 onClick={handleBroadcast}
                 disabled={isProcessing || !analysisResult.isBiomass}
-                className="w-full py-5 bg-[#39FF14] text-black text-sm font-black uppercase tracking-[0.25em] transition-all active:scale-95 disabled:opacity-50"
+                className={`w-full py-5 text-sm font-black uppercase tracking-[0.25em] transition-all active:scale-95 disabled:opacity-50 ${
+                  signatureError ? 'bg-red-600 text-white animate-shake' : 'bg-[#39FF14] text-black'
+                }`}
               >
-                {isProcessing ? "[ ETCHING... ]" : "[ BROADCAST ]"}
+                {isProcessing ? "[ ETCHING... ]" : signatureError ? "[ SIGNATURE FAILED ]" : "[ BROADCAST ]"}
               </button>
               <button 
                 onClick={handleRescan}
