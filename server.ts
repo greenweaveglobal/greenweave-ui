@@ -1,7 +1,6 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import { finalizeEvent } from 'nostr-tools';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 
 async function startServer() {
@@ -10,59 +9,7 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // Initialize Gemini
-  let genAI: GoogleGenerativeAI | null = null;
-  const getGenAI = () => {
-    if (!genAI) {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('GEMINI_API_KEY not configured on server');
-      }
-      genAI = new GoogleGenerativeAI(apiKey);
-    }
-    return genAI;
-  };
-
   // API Routes
-  app.post('/api/analyze-biomass', async (req, res) => {
-    try {
-      const { image } = req.body; // base64 string
-      if (!image) {
-        return res.status(400).json({ error: 'Image data is required' });
-      }
-
-      const ai = getGenAI();
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-      const prompt = "Analyze this image. Identify the plant species if any. Return ONLY a valid JSON object with these exact keys: 'species' (string, name of plant or 'Unknown'), 'confidence' (number percentage, e.g. 95), 'isBiomass' (boolean, true if it is a living plant), and 'description' (short 1-sentence ecological value).";
-
-      // image comes as "data:image/jpeg;base64,..."
-      const base64Data = image.split(',')[1] || image;
-      
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: "image/jpeg"
-          }
-        }
-      ]);
-
-      const response = await result.response;
-      const text = response.text();
-      
-      // Clean up the text if Gemini adds markdown blocks
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const analysis = JSON.parse(jsonStr);
-
-      return res.json(analysis);
-    } catch (err: any) {
-      console.error('[API/Analyze] error', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
   app.post('/api/zap', async (req, res) => {
     try {
       const { nwcUri, amountSats } = req.body;

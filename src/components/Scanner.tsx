@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { GoogleGenAI, Type } from "@google/genai";
 
 type ScannerStatus = "SCANNING" | "ANALYZING" | "RESULT";
 
@@ -117,16 +118,56 @@ export default function Scanner({ onAddLog }: ScannerProps) {
     }
 
     try {
-      addLog("[SENDING TO GREENWEAVE AI CLUSTER...]");
-      const response = await fetch('/api/analyze-biomass', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image })
+      const apiKey = localStorage.getItem('gemini_api_key');
+      if (!apiKey) {
+        addLog("WARNING: Quantum Core Offline.");
+        addLog("Please enter your Gemini API Key in the ME tab.");
+        setTimeout(() => setStatus("SCANNING"), 4000);
+        return;
+      }
+
+      addLog("[CONNECTING TO GREENWEAVE AI CLUSTER...]");
+      
+      const ai = new GoogleGenAI({ apiKey });
+      const model = "gemini-3-flash-preview";
+      
+      const imagePart = {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64Image.split(',')[1],
+        },
+      };
+
+      const result = await ai.models.generateContent({
+        model,
+        contents: [
+          {
+            parts: [
+              imagePart,
+              { text: "Analyze this image. Identify the plant species. Return ONLY a valid JSON object with keys: 'species' (string), 'confidence' (number), 'isBiomass' (boolean), and 'description' (short sentence)." }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              species: { type: Type.STRING },
+              confidence: { type: Type.NUMBER },
+              isBiomass: { type: Type.BOOLEAN },
+              description: { type: Type.STRING },
+            },
+            required: ["species", "confidence", "isBiomass", "description"],
+          },
+        },
       });
 
-      if (!response.ok) throw new Error('AI Link Failure');
+      const responseText = result.text || "{}";
+      const data = JSON.parse(responseText);
+      
+      if (!data.species) throw new Error("Invalid Analysis Data");
 
-      const data = await response.json();
       setAnalysisResult(data);
       setStatus("RESULT");
       addLog(`[ANALYSIS COMPLETE] ${data.species.toUpperCase()} IDENTIFIED`);

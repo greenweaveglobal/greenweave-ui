@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+
 interface ProfileDashboardProps {
   isIdentityConnected: boolean;
   pubkey: string | null;
@@ -13,6 +15,29 @@ export default function ProfileDashboard({
   onConnect, 
   onLogout 
 }: ProfileDashboardProps) {
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) {
+      setHasApiKey(true);
+    }
+  }, []);
+
+  const handleSaveKey = () => {
+    if (apiKeyInput.trim()) {
+      localStorage.setItem('gemini_api_key', apiKeyInput.trim());
+      setHasApiKey(true);
+      setApiKeyInput("");
+    }
+  };
+
+  const handleClearKey = () => {
+    localStorage.removeItem('gemini_api_key');
+    setHasApiKey(false);
+  };
+
   if (!isIdentityConnected) {
     return (
       <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in duration-500">
@@ -69,6 +94,43 @@ export default function ProfileDashboard({
         <div className="text-[10px] font-bold text-amber-600 break-all font-mono bg-black/40 p-3 border border-amber-500/10 rounded">
           {pubkey}
         </div>
+      </div>
+      
+      {/* Quantum Core Settings */}
+      <div className="w-full mb-10">
+        <div className="text-xs font-bold text-amber-500/80 mb-3 uppercase tracking-widest">
+          [ QUANTUM CORE: GEMINI API KEY ]
+        </div>
+        
+        {hasApiKey ? (
+          <div className="bg-zinc-900 border-2 border-[#39FF14]/30 p-4 flex flex-col gap-3 shadow-lg">
+            <div className="text-sm font-black text-[#39FF14] uppercase tracking-widest">
+              [ API KEY: SECURED ]
+            </div>
+            <button 
+              onClick={handleClearKey}
+              className="text-[10px] font-black text-red-500 uppercase tracking-widest border border-red-500/30 py-2 hover:bg-red-500 hover:text-white transition-all"
+            >
+              [ CLEAR KEY ]
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <input 
+              type="password"
+              placeholder="ENTER QUANTUM CORE KEY"
+              className="w-full bg-black border-2 border-amber-500/30 p-4 text-white font-mono text-sm focus:border-amber-400 outline-none transition-all placeholder:text-amber-900"
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+            />
+            <button 
+              onClick={handleSaveKey}
+              className="w-full py-3 bg-amber-500 text-black font-black text-xs uppercase tracking-widest hover:bg-amber-400 transition-all active:scale-95"
+            >
+              SAVE KEY
+            </button>
+          </div>
+        )}
       </div>
       
       <div className="text-xs font-bold text-amber-500/80 mb-3 uppercase tracking-widest">
