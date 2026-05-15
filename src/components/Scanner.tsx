@@ -214,7 +214,15 @@ export default function Scanner({ onAddLog }: ScannerProps) {
       }
 
       addLog("[TRANSMITTING TO CRYPTO-SIGNER...]");
-      const signedEvent = await (window as any).nostr.signEvent(eventTemplate);
+      // Defensive handling for signEvent to prevent state crash on mobile popup block
+      let signedEvent;
+      try {
+        signedEvent = await (window as any).nostr.signEvent(eventTemplate);
+      } catch (signErr: any) {
+        console.error("Signature attempt failed:", signErr);
+        throw new Error(signErr.message || "SIGNATURE_REJECTED_OR_BLOCKED");
+      }
+      
       addLog("[SIGNATURE VERIFIED]");
 
       // 3. Broadcast to Relays
@@ -249,14 +257,20 @@ export default function Scanner({ onAddLog }: ScannerProps) {
       }
 
     } catch (err: any) {
+      console.error("Broadcast task failure:", err);
       addLog(`[TRANSMISSION ABORTED] ${err.message}`);
       setSignatureError(true);
       setIsProcessing(false);
       
-      // Prompt user about bunker
-      alert("WARNING: Bunker connection failed. Please ensure your key storage app (e.g., nsec.app) is open in another tab, allow popups, and try again.");
+      // Prompt user about bunker / popup issues
+      const isPopupError = err.message.includes("blocked") || err.message.includes("popup");
+      const errorMsg = isPopupError 
+        ? "POPUP BLOCKED: Please enable popups for this site or open your nsec.app tab."
+        : "Bunker connection failed or timed out. Please ensure your key storage app (e.g., nsec.app) is open and wake it up, then try again.";
       
-      // Revert button status after 3 seconds
+      alert(`WARNING: ${errorMsg}`);
+      
+      // Revert button status after 3 seconds to allow RETRY
       setTimeout(() => {
         setSignatureError(false);
       }, 3000);
@@ -357,7 +371,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
                   signatureError ? 'bg-red-600 text-white animate-shake' : 'bg-[#39FF14] text-black'
                 }`}
               >
-                {isProcessing ? "[ ETCHING... ]" : signatureError ? "[ SIGNATURE FAILED ]" : "[ BROADCAST ]"}
+                {isProcessing ? "[ ETCHING... ]" : signatureError ? "[ SIGNATURE TIMEOUT - RETRY ]" : "[ BROADCAST ]"}
               </button>
               <button 
                 onClick={handleRescan}
