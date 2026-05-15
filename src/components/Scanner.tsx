@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-// The Eye of EVE
-export default function App() {
+interface ScannerProps {
+  onAddLog?: (msg: string) => void;
+}
+
+export default function Scanner({ onAddLog }: ScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [logs, setLogs] = useState<string[]>(["EVE Core v0.9.1 online.", "Initializing ocular link..."]);
@@ -9,8 +12,11 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const addLog = useCallback((msg: string) => {
-    setLogs((prev) => [...prev, `[${new Date().toISOString().split("T")[1].slice(0,-1)}] ${msg}`].slice(-10));
-  }, []);
+    const timestamp = new Date().toISOString().split("T")[1].slice(0, -1);
+    const logEntry = `[${timestamp}] ${msg}`;
+    setLogs((prev) => [...prev, logEntry].slice(-10));
+    onAddLog?.(logEntry);
+  }, [onAddLog]);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -23,7 +29,7 @@ export default function App() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().catch(e => console.log('Auto-play prevented:', e));
+            videoRef.current?.play().catch(e => console.error('Auto-play blocked:', e));
           };
         }
         addLog("Ocular link established.");
@@ -50,14 +56,16 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, [addLog, isAnalyzing]);
 
-  const playDropSound = () => {
+  const playOcularSound = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(432, ctx.currentTime); // 432 Hz healing frequency
+      osc.frequency.setValueAtTime(432, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
       
       gain.gain.setValueAtTime(0, ctx.currentTime);
@@ -70,7 +78,7 @@ export default function App() {
       osc.start();
       osc.stop(ctx.currentTime + 0.4);
     } catch (e) {
-      // Audio might be blocked initially by browser policy if no interaction
+      // Audio might be blocked by browser policy
     }
   };
 
@@ -79,14 +87,12 @@ export default function App() {
     setIsAnalyzing(true);
     
     addLog("[TARGET ACQUIRED]");
-    
-    // Simulate periodic/biological verification
     addLog("[BIOMASS ANALYZED] Transferring data...");
     
     await new Promise(r => setTimeout(r, 1000));
     
     setFlash(true);
-    playDropSound();
+    playOcularSound();
     
     setTimeout(() => setFlash(false), 200);
 
@@ -111,10 +117,11 @@ export default function App() {
       const bRes = await fetch('/api/broadcast', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ message: '[DIRECTIVE COMPLETED] Biological mass analyzed. Energy toll of 21 Sats deducted for cognitive processing. Layer 0 state preserved. #GreenWeave' }) 
+        body: JSON.stringify({ 
+          message: '[DIRECTIVE COMPLETED] Biological mass analyzed. Energy toll of 21 Sats deducted for cognitive processing. Layer 0 state preserved. #GreenWeave' 
+        }) 
       });
       if (bRes.ok) {
-        // const { eventId } = await bRes.json();
         addLog(`[LAYER 0 ETCHED] State preserved on Nostr.`);
       } else {
         addLog("Etching failed: Core isolated.");
@@ -177,7 +184,7 @@ export default function App() {
         ))}
       </div>
       
-      {/* Hidden button for touch users (safeguard) */}
+      {/* Full-screen click handler for mobile robustness */}
       <div className="absolute inset-0 z-40 opacity-0" onClick={captureAndProcess}></div>
     </div>
   );

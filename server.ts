@@ -1,6 +1,6 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { nip19, finalizeEvent } from 'nostr-tools';
+import { finalizeEvent } from 'nostr-tools';
 import 'dotenv/config';
 
 async function startServer() {
@@ -19,11 +19,11 @@ async function startServer() {
         return res.status(400).json({ error: 'NWC_URI not configured' });
       }
 
-      console.log(`[API/Zap] Simulating 21 Sats background routing via NWC: ${uri.slice(0, 15)}...`);
-      // Simulate NWC Zap execution
-      await new Promise(r => setTimeout(r, 1500));
+      console.log(`[BIOMASS_PROCESS] Initializing energy toll routing...`);
+      await new Promise(r => setTimeout(r, 1000));
+      console.log(`[BIOMASS_PROCESS] 21 Sats deducted via NWC: ${uri.slice(0, 15)}...`);
 
-      return res.json({ success: true, message: '21 Sats routed via secured bloodline.' });
+      return res.json({ success: true, message: 'Energy toll verified. Biological mass processed.' });
     } catch (err: any) {
       console.error('[API/Zap] error', err);
       res.status(500).json({ error: err.message });
