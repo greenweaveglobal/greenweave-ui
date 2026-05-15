@@ -12,18 +12,18 @@ const MOCK_FEED = [
     timestamp: "2 HOURS AGO",
     description: "High biomass density detected. Vital carbon sink active.",
     energyToll: 21,
-    image: "https://images.unsplash.com/photo-1598112972545-84373a441112?q=80&w=800&auto=format&fit=crop"
+    image: "https://picsum.photos/seed/greenweave1/600/400"
   },
   {
     id: "2",
-    author: "LeafProphet",
+    author: "adan_conservancy",
     species: "Adansonia (Baobab)",
     location: "Sub-Saharan Node / Layer 1",
     confidence: 95.2,
     timestamp: "5 HOURS AGO",
     description: "Ancient biological reservoir preserved. Connectivity stable.",
     energyToll: 42,
-    image: "https://images.unsplash.com/photo-1518384401463-d38760fa6fca?q=80&w=800&auto=format&fit=crop"
+    image: "https://picsum.photos/seed/greenweave2/600/400"
   },
   {
     id: "3",
@@ -34,7 +34,7 @@ const MOCK_FEED = [
     timestamp: "8 HOURS AGO",
     description: "Massive carbon sequestration unit verified. Structural integrity optimal.",
     energyToll: 84,
-    image: "https://images.unsplash.com/photo-1542316496-e263004d80be?q=80&w=800&auto=format&fit=crop"
+    image: "https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=800&auto=format&fit=crop"
   }
 ];
 
@@ -53,7 +53,7 @@ export default function BiomassFeed() {
           {MOCK_FEED.map((item) => (
             <div key={item.id} className="bg-zinc-950 border-2 border-amber-500/10 shadow-2xl relative group">
               {/* Image Evidence Block */}
-              <div className="relative w-full h-48 overflow-hidden border-b border-amber-500/10">
+              <div className="relative w-full h-48 overflow-hidden border-b border-amber-500/10 bg-zinc-900">
                 <img 
                   src={item.image} 
                   alt={item.species}

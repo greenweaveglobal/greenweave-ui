@@ -194,15 +194,17 @@ export default function Scanner({ onAddLog }: ScannerProps) {
 
     // 1. Construct the Note Content
     const dispConfidence = (analysisResult.confidence * 100).toFixed(1) + '%';
-    const content = `🌿 [ LAYER 0 BIOMASS VERIFIED ]\nTarget: ${analysisResult.species}\nConfidence: ${dispConfidence}\n${analysisResult.description}\n\n#GreenWeave #Biomass #Cypherpunk`;
+    const content = `Biomass Genesis Scan initiated.\nTarget: ${analysisResult.species}\nStatus: Living Asset Confirmed. 🌱⚡️\nConfidence: ${dispConfidence}\n\n${analysisResult.description}`;
     
     const eventTemplate = {
       kind: 1,
       created_at: Math.floor(Date.now() / 1000),
       tags: [
-        ['t', 'GreenWeave'],
-        ['t', 'Biomass'],
-        ['t', 'Cypherpunk']
+        ["t", "GreenWeave"],
+        ["t", "BiomassProof"],
+        ["l", "latitude,longitude", "geohash"], // NIP-52 Location
+        ["rgb_anchor", "pending_genesis_bond"], // The Bridge to RGB Layer 2
+        ["client", "GreenWeave_EVE"]
       ],
       content: content,
     };
