@@ -2,9 +2,10 @@ import { useState } from "react";
 
 interface DaoTerminalProps {
   onMintUSDG?: () => void;
+  npub?: string | null;
 }
 
-export default function DaoTerminal({ onMintUSDG }: DaoTerminalProps) {
+export default function DaoTerminal({ onMintUSDG, npub }: DaoTerminalProps) {
   const [prop881Status, setProp881Status] = useState<'Active' | 'Resolved'>('Active');
 
   const handleApproveProp881 = () => {
@@ -24,6 +25,19 @@ export default function DaoTerminal({ onMintUSDG }: DaoTerminalProps) {
         Network Governance
       </div>
 
+      {/* Your Node Status */}
+      <div className="w-full bg-zinc-950 border border-amber-500/30 p-4 mb-8 text-left font-mono">
+        <div className="text-xs text-amber-500 font-bold tracking-widest uppercase mb-3 border-b border-amber-500/20 pb-2">
+          Your Node Status
+        </div>
+        <div className="flex flex-col gap-1 text-[10px] text-zinc-400 tracking-widest uppercase">
+          <div className="flex justify-between"><span>Npub:</span> <span className="text-white">{npub ? `${npub.slice(0, 9)}...${npub.slice(-4)}` : "NOT_CONNECTED"}</span></div>
+          <div className="flex justify-between"><span>Eco-History:</span> <span className="text-[#39FF14]">14 Valid Scans</span></div>
+          <div className="flex justify-between"><span>Trust Score:</span> <span className="text-cyan-400">Level 4</span></div>
+          <div className="flex justify-between"><span>Voting Weight:</span> <span className="text-amber-500 font-bold">4.2x Multiplier</span></div>
+        </div>
+      </div>
+
        <div className="w-full space-y-6">
         {/* Proposal 1 */}
         <div className="w-full bg-black border-2 border-zinc-800 p-4 relative group text-left shadow-[0_0_20px_rgba(0,0,0,0.5)]">
@@ -40,17 +54,37 @@ export default function DaoTerminal({ onMintUSDG }: DaoTerminalProps) {
              Verify Biomass Node #442
            </div>
            
+           <div className="flex flex-col gap-1 mb-4 text-xs font-mono text-[#39FF14]/70 bg-[#39FF14]/5 p-2 border border-[#39FF14]/10">
+             <div><span className="text-zinc-500">TARGET:</span> DALBERGIA LATIFOLIA (INDIAN ROSEWOOD)</div>
+             <div><span className="text-zinc-500">AI CONF.:</span> 92.5%</div>
+             <div className="truncate"><span className="text-zinc-500">PROOF:</span> NOTE1XYZ89A7B6C5D4E3F2G1H...</div>
+             <div><span className="text-zinc-500">MINT ALG:</span> BASE(10) * SPECIES(5.0) = 50 USDG</div>
+           </div>
+           
            {prop881Status === 'Active' ? (
-             <div className="flex gap-2">
-               <button 
-                 onClick={handleApproveProp881}
-                 className="flex-1 border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-2 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
-               >
-                 APPROVE
-               </button>
-               <button className="flex-1 border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-2 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                 REJECT
-               </button>
+             <div className="flex flex-col gap-4">
+               <div>
+                 <div className="text-[10px] font-bold text-amber-500/80 mb-1 uppercase tracking-widest text-center">
+                   Network Consensus Required
+                 </div>
+                 <div className="text-[10px] text-zinc-500 text-center uppercase tracking-widest">
+                   Consensus Threshold: 66.6% Node Weight
+                 </div>
+               </div>
+               <div className="flex flex-col gap-2">
+                 <button 
+                   onClick={handleApproveProp881}
+                   className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
+                 >
+                   APPROVE & STAKE 5 USDG
+                 </button>
+                 <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
+                   REJECT & STAKE 5 USDG
+                 </button>
+                 <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
+                   *Warning: Malicious voting will result in 100% slashing of staked assets.*
+                 </div>
+               </div>
              </div>
            ) : (
              <div className="w-full border-2 border-zinc-800 text-zinc-500 font-black text-[10px] tracking-widest py-2 uppercase text-center cursor-not-allowed">
@@ -70,13 +104,26 @@ export default function DaoTerminal({ onMintUSDG }: DaoTerminalProps) {
              Burn Invalid Biomass Entry
            </div>
            
-           <div className="flex gap-2">
-             <button className="flex-1 border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-2 hover:bg-[#39FF14] hover:text-black transition-colors uppercase">
-               APPROVE
-             </button>
-             <button className="flex-1 border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-2 hover:bg-red-500 hover:text-black transition-colors uppercase">
-               REJECT
-             </button>
+           <div className="flex flex-col gap-4">
+             <div>
+               <div className="text-[10px] font-bold text-amber-500/80 mb-1 uppercase tracking-widest text-center">
+                 Network Consensus Required
+               </div>
+               <div className="text-[10px] text-zinc-500 text-center uppercase tracking-widest">
+                 Consensus Threshold: 66.6% Node Weight
+               </div>
+             </div>
+             <div className="flex flex-col gap-2">
+               <button className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase">
+                 APPROVE & STAKE 5 USDG
+               </button>
+               <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
+                 REJECT & STAKE 5 USDG
+               </button>
+               <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
+                 *Warning: Malicious voting will result in 100% slashing of staked assets.*
+               </div>
+             </div>
            </div>
         </div>
       </div>

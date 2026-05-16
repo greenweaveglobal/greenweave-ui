@@ -136,7 +136,7 @@ export default function App() {
         )}
 
         {activeTab === 'DAO' && (
-          <DaoTerminal onMintUSDG={() => {
+          <DaoTerminal npub={npub} onMintUSDG={() => {
             setUsdgBalance(prev => prev + 50);
             setToastMessage("[ CONSENSUS REACHED. 50 USDG MINTED TO RGB VAULT. ]");
             setTimeout(() => setToastMessage(null), 3000);
