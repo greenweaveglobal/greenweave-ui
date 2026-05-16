@@ -1,45 +1,144 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Zap, Heart, MessageSquare } from "lucide-react";
+import { SimplePool, nip19, getPublicKey } from "nostr-tools";
 import ZapModal from "./ZapModal";
 
-const MOCK_FEED = [
-  {
-    id: "1",
-    author: "RootNode_Alpha",
-    species: "Musa (Banana Tree)",
-    location: "Amazon Basin / Layer 0",
-    confidence: 98.7,
-    timestamp: "2 HOURS AGO",
-    description: "High biomass density detected. Vital carbon sink active.",
-    energyToll: 21,
-    image: "https://picsum.photos/seed/greenweave1/600/400"
-  },
-  {
-    id: "2",
-    author: "adan_conservancy",
-    species: "Adansonia (Baobab)",
-    location: "Sub-Saharan Node / Layer 1",
-    confidence: 95.2,
-    timestamp: "5 HOURS AGO",
-    description: "Ancient biological reservoir preserved. Connectivity stable.",
-    energyToll: 42,
-    image: "https://picsum.photos/seed/greenweave2/600/400"
-  },
-  {
-    id: "3",
-    author: "GreenVanguard",
-    species: "Sequoiadendron (Giant Sequoia)",
-    location: "Sierra Nevada / Layer 2",
-    confidence: 99.1,
-    timestamp: "8 HOURS AGO",
-    description: "Massive carbon sequestration unit verified. Structural integrity optimal.",
-    energyToll: 84,
-    image: "https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=800&auto=format&fit=crop"
-  }
-];
+interface LivePost {
+  id: string;
+  author: string;
+  pubkey: string;
+  timestamp: string;
+  content: string;
+  species: string;
+  confidence: string;
+  description: string;
+  location: string;
+  energyToll: number;
+  image?: string;
+  createdAt: number;
+}
+
+function getRelativeTime(timestamp: number) {
+  const diffMs = Date.now() - timestamp * 1000;
+  const mins = Math.max(1, Math.round(diffMs / (1000 * 60)));
+  if (mins < 60) return `${mins} MINS AGO`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} HOURS AGO`;
+  return `${Math.round(hours / 24)} DAYS AGO`;
+}
 
 export default function BiomassFeed() {
   const [activeZapTarget, setActiveZapTarget] = useState<string | null>(null);
+  const [livePosts, setLivePosts] = useState<LivePost[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const pool = new SimplePool();
+    const relays = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io'];
+
+    let userPubkey = "";
+    const nodeKey = localStorage.getItem('greenweave_nsec');
+    if (nodeKey) {
+      try {
+        let secretKeyBytes: Uint8Array;
+        if (nodeKey.startsWith('nsec1')) {
+          const decoded = nip19.decode(nodeKey);
+          if (decoded.type === 'nsec') {
+             secretKeyBytes = decoded.data as Uint8Array;
+             userPubkey = getPublicKey(secretKeyBytes);
+          }
+        } else if (nodeKey.length === 64) {
+          secretKeyBytes = new Uint8Array(nodeKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+          userPubkey = getPublicKey(secretKeyBytes);
+        }
+      } catch(e) {}
+    }
+
+    const sub = pool.subscribeMany(
+      relays,
+      [
+        {
+          kinds: [1],
+          '#t': ['GreenWeave', 'BiomassProof'],
+          limit: 20
+        }
+      ] as any,
+      {
+        onevent(event) {
+          if (!active) return;
+          const text = event.content;
+          
+          let species = "Unknown Biomass";
+          const targetMatch = text.match(/Target:\s*([^\n]+)/);
+          if (targetMatch) species = targetMatch[1].trim();
+
+          let confidence = "??";
+          const confMatch = text.match(/Confidence:\s*([^\n]+)/);
+          if (confMatch) confidence = confMatch[1].trim();
+
+          const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
+          let image = "https://picsum.photos/seed/greenweave" + event.id.substring(0,4) + "/600/400";
+          if (urlMatch) {
+            image = urlMatch[1];
+          }
+
+          let location = "Unknown Sector / Layer 0";
+          const lTag = event.tags.find(t => t[0] === 'l');
+          if (lTag && lTag[1]) {
+            location = lTag[1];
+          }
+          
+          let desc = text;
+          desc = desc.replace(/Biomass Genesis Scan initiated\.?/gi, '');
+          desc = desc.replace(/Target:[^\n]+/gi, '');
+          desc = desc.replace(/Status:[^\n]+/gi, '');
+          desc = desc.replace(/Confidence:[^\n]+/gi, '');
+          if (urlMatch) desc = desc.replace(urlMatch[1], '');
+          desc = desc.trim();
+          if (!desc) desc = "Biological data secured. Asset pending Genesis verification.";
+
+          const authorNpub = nip19.npubEncode(event.pubkey);
+          const authorShort = authorNpub.slice(0, 10) + "...";
+
+          const newPost = {
+            id: event.id,
+            author: authorShort,
+            pubkey: event.pubkey,
+            createdAt: event.created_at,
+            timestamp: getRelativeTime(event.created_at),
+            content: event.content,
+            species,
+            confidence: confidence.replace('%',''),
+            description: desc.length > 150 ? desc.substring(0, 150) + "..." : desc,
+            location,
+            energyToll: 21,
+            image
+          };
+
+          setLivePosts(prev => {
+            if (prev.find(p => p.id === newPost.id)) return prev;
+            let updated = [...prev, newPost];
+            
+            // Apply sorting logic
+            updated = updated.sort((a,b) => {
+              if (userPubkey) {
+                if (a.pubkey === userPubkey && b.pubkey !== userPubkey) return -1;
+                if (b.pubkey === userPubkey && a.pubkey !== userPubkey) return 1;
+              }
+              return b.createdAt - a.createdAt;
+            });
+            
+            return updated;
+          });
+        }
+      }
+    );
+
+    return () => {
+      active = false;
+      sub.close();
+    }
+  }, []);
 
   return (
     <div className="w-full max-w-sm flex-1 flex flex-col pt-4 overflow-hidden animate-in fade-in duration-500">
@@ -50,7 +149,11 @@ export default function BiomassFeed() {
 
       <div className="flex-1 overflow-y-auto px-4 pb-48 scrollbar-hide">
         <div className="flex flex-col gap-10">
-          {MOCK_FEED.map((item) => (
+          {livePosts.length === 0 ? (
+            <div className="text-center text-zinc-600 text-xs font-black uppercase tracking-widest mt-10">
+              [ SCANNING RELAYS... ]
+            </div>
+          ) : livePosts.map((item) => (
             <div key={item.id} className="bg-zinc-950 border-2 border-amber-500/10 shadow-2xl relative group">
               {/* Image Evidence Block */}
               <div className="relative w-full h-48 overflow-hidden border-b border-amber-500/10 bg-zinc-900">
@@ -81,8 +184,8 @@ export default function BiomassFeed() {
                     <div className="text-[10px] text-[#39FF14] font-black uppercase tracking-tighter">@{item.author}</div>
                     <div className="text-[10px] text-zinc-600 font-bold uppercase">{item.timestamp}</div>
                   </div>
-                  <div className="bg-zinc-900 border border-zinc-800 px-2 py-1 text-[8px] text-zinc-500 font-mono">
-                    SIG: {item.id.repeat(4)}...
+                  <div className="bg-zinc-900 border border-zinc-800 px-2 py-1 text-[8px] text-zinc-500 font-mono overflow-hidden text-ellipsis max-w-24 whitespace-nowrap">
+                    SIG: {item.id.substring(0, 8)}...
                   </div>
                 </div>
 
