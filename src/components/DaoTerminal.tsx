@@ -14,6 +14,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
   const isProp881Resolved = resolvedProposals.includes("prop-881");
   const isProp883Resolved = resolvedProposals.includes("prop-883");
   const [proposalInput, setProposalInput] = useState("");
+  const [proposalType, setProposalType] = useState<"SIGNAL" | "TREASURY" | "PENALTY">("SIGNAL");
 
   const handleApproveProp881 = () => {
     if (isProp881Resolved) return;
@@ -80,6 +81,31 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
           Initiate Proposal
         </div>
         <div className="flex flex-col gap-3">
+          <div className="flex justify-between gap-2 text-[10px] font-bold tracking-widest uppercase">
+            <button 
+              onClick={() => setProposalType('SIGNAL')}
+              className={`flex-1 py-2 border border-cyan-400/30 transition-colors ${proposalType === 'SIGNAL' ? 'bg-cyan-400 text-black' : 'text-cyan-400 hover:bg-cyan-400/10'}`}
+            >
+              SIGNAL
+            </button>
+            <button 
+              onClick={() => setProposalType('TREASURY')}
+              className={`flex-1 py-2 border border-cyan-400/30 transition-colors ${proposalType === 'TREASURY' ? 'bg-cyan-400 text-black' : 'text-cyan-400 hover:bg-cyan-400/10'}`}
+            >
+              TREASURY
+            </button>
+            <button 
+              onClick={() => setProposalType('PENALTY')}
+              className={`flex-1 py-2 border border-cyan-400/30 transition-colors ${proposalType === 'PENALTY' ? 'bg-cyan-400 text-black' : 'text-cyan-400 hover:bg-cyan-400/10'}`}
+            >
+              PENALTY
+            </button>
+          </div>
+
+          <div className={`text-center text-[10px] font-bold tracking-widest uppercase py-1 border-t border-b border-zinc-800 ${proposalType === 'SIGNAL' ? 'text-cyan-400' : 'text-amber-500'}`}>
+            {proposalType === 'SIGNAL' ? 'Required Network Consensus: 51.0% (Soft Fork)' : 'Required Network Consensus: 66.6% (Hard Fork)'}
+          </div>
+
           <input 
             type="text" 
             value={proposalInput}
