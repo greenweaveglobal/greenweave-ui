@@ -147,35 +147,34 @@ export default function ProfileDashboard({
       </div>
       
       {/* Identity Card */}
-      <div className="w-full bg-zinc-900 border-2 border-[#39FF14]/30 p-5 mb-8 relative overflow-hidden shadow-[0_0_20px_rgba(57,255,20,0.1)]">
-        <div className="flex items-center gap-6 mb-4">
-          {profile?.picture ? (
-            <img 
-              src={profile.picture} 
-              alt="Profile" 
-              className="w-16 h-16 rounded-full border-2 border-[#39FF14] shadow-[0_0_10px_rgba(57,255,20,0.5)] object-cover" 
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-950 border-2 border-[#39FF14] flex items-center justify-center relative shadow-[0_0_10px_rgba(57,255,20,0.5)]">
-               <div className="text-2xl font-black text-[#39FF14]">{profile?.name ? profile.name.charAt(0).toUpperCase() : (profile?.display_name ? profile.display_name.charAt(0).toUpperCase() : "NW")}</div>
+      <div className="w-full flex flex-col items-center justify-center p-6 border border-[#39FF14]/50 rounded-lg bg-black/40 min-h-[140px] gap-3 mb-8 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
+        {profile?.picture ? (
+          <img 
+            src={profile.picture} 
+            alt="Profile" 
+            className="w-16 h-16 rounded-full border-2 border-[#39FF14] shadow-[0_0_10px_rgba(57,255,20,0.5)] object-cover shrink-0" 
+          />
+        ) : (
+          <div className="w-16 h-16 shrink-0 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-950 border-2 border-[#39FF14] flex items-center justify-center relative shadow-[0_0_10px_rgba(57,255,20,0.5)]">
+             <div className="text-2xl font-black text-[#39FF14]">{profile?.name ? profile.name.charAt(0).toUpperCase() : (profile?.display_name ? profile.display_name.charAt(0).toUpperCase() : "NW")}</div>
+          </div>
+        )}
+        
+        <div className="w-full flex flex-col items-center">
+          <div className="text-lg text-[#39FF14] font-mono tracking-widest text-center">
+             {profile?.name || profile?.display_name || "ANONYMOUS NODE"}
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="text-xs font-mono text-zinc-400 tracking-widest">
+              {shortenedNpub}
             </div>
-          )}
-          <div className="flex flex-col">
-            <div className="text-xl font-black text-[#39FF14] uppercase tracking-wider">
-               {profile?.name || profile?.display_name || "ANONYMOUS NODE"}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="text-[10px] font-mono text-zinc-400 tracking-widest">
-                {shortenedNpub}
-              </div>
-              <button 
-                onClick={() => navigator.clipboard.writeText(npub || "")}
-                className="text-zinc-500 hover:text-[#39FF14] transition-colors"
-                title="Copy npub"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              </button>
-            </div>
+            <button 
+              onClick={() => navigator.clipboard.writeText(npub || "")}
+              className="text-zinc-500 hover:text-[#39FF14] transition-colors shrink-0"
+              title="Copy npub"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
           </div>
         </div>
       </div>
