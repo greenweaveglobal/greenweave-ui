@@ -33,47 +33,57 @@ export default function BiomassFeed() {
 
   useEffect(() => {
     let active = true;
-    const pool = new SimplePool();
-    const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
-
-    const sub = pool.subscribeMany(
-      relays,
-      [
+    const fetchEvents = async () => {
+      const pool = new SimplePool();
+      const relays = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net'];
+      
+      const sub = pool.subscribeMany(
+        relays,
+        [
+          {
+            kinds: [1],
+            '#t': ['GreenWeave'],
+            limit: 50
+          }
+        ] as any,
         {
-          kinds: [1],
-          limit: 20
+          onevent(event) {
+            if (!active) return;
+  
+            const newPost = {
+              id: event.id,
+              author: nip19.npubEncode(event.pubkey).substring(0, 10) + "...",
+              pubkey: event.pubkey,
+              createdAt: event.created_at,
+              timestamp: getRelativeTime(event.created_at),
+              content: event.content,
+              species: "Biomass",
+              confidence: "??",
+              description: "",
+              location: "",
+              energyToll: 0
+            };
+  
+            setFeedPosts(prev => {
+              if (prev.some(p => p.id === newPost.id)) return prev;
+              const newFeed = [...prev, newPost];
+              return newFeed.sort((a,b) => b.createdAt - a.createdAt);
+            });
+          }
         }
-      ] as any,
-      {
-        onevent(event) {
-          if (!active) return;
+      );
 
-          const newPost = {
-            id: event.id,
-            author: event.pubkey,
-            pubkey: event.pubkey,
-            createdAt: event.created_at,
-            timestamp: getRelativeTime(event.created_at),
-            content: event.content,
-            species: "Biomass",
-            confidence: "??",
-            description: "",
-            location: "",
-            energyToll: 0
-          };
+      return () => {
+        active = false;
+        sub.close();
+        pool.close(relays);
+      };
+    };
 
-          setFeedPosts(prev => {
-            if (prev.find(p => p.id === newPost.id)) return prev;
-            return [...prev, newPost].sort((a,b) => b.createdAt - a.createdAt);
-          });
-        }
-      }
-    );
-
+    const cleanup = fetchEvents();
     return () => {
-      active = false;
-      sub.close();
-    }
+      cleanup.then(clean => clean());
+    };
   }, []);
 
   return (
