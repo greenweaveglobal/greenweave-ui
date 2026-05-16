@@ -6,6 +6,7 @@ interface ProfileDashboardProps {
   isIdentityConnected: boolean;
   pubkey: string | null;
   npub: string | null;
+  usdgBalance: number;
   onConnect: () => void;
   onLogout: () => void;
 }
@@ -14,6 +15,7 @@ export default function ProfileDashboard({
   isIdentityConnected, 
   pubkey, 
   npub, 
+  usdgBalance,
   onConnect, 
   onLogout 
 }: ProfileDashboardProps) {
@@ -297,8 +299,7 @@ export default function ProfileDashboard({
           </div>
         )}
       </div>
-      
-      {/* RGB Asset Vault */}
+            {/* RGB Asset Vault */}
       <div className="w-full mb-10">
         <div className="text-xs font-bold text-[#39FF14] mb-3 uppercase tracking-widest drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">
           [ RGB ASSET VAULT ]
@@ -310,7 +311,7 @@ export default function ProfileDashboard({
              <span className="text-[10px] text-cyan-400 font-bold bg-cyan-400/10 px-2 py-0.5 rounded-sm uppercase tracking-wider">Client Verified</span>
            </div>
            <div className="flex justify-between items-end">
-             <span className="text-3xl font-black text-white tracking-wider">1,450.00</span>
+             <span className="text-3xl font-black text-white tracking-wider">{usdgBalance.toFixed(2)}</span>
              <span className="text-lg font-bold text-cyan-400 tracking-widest mb-1">USDG</span>
            </div>
            <div className="text-[10px] text-zinc-500 font-mono mt-2 tracking-widest uppercase">

@@ -13,6 +13,8 @@ export default function App() {
   const [npub, setNpub] = useState<string | null>(null);
   const [isIdentityConnected, setIsIdentityConnected] = useState(false);
   const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'DAO' | 'ME'>('SCAN');
+  const [usdgBalance, setUsdgBalance] = useState<number>(0.00);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadIdentity = () => {
@@ -86,6 +88,13 @@ export default function App() {
       {/* Subtle lighting overlay */}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-black to-black opacity-50 pointer-events-none" />
 
+      {/* Global Toast */}
+      {toastMessage && (
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[#39FF14] text-black px-6 py-3 font-bold uppercase tracking-widest text-[10px] sm:text-xs rounded shadow-[0_0_20px_rgba(57,255,20,0.5)] animate-in slide-in-from-top-4 fade-in duration-300 text-center w-[90%] max-w-sm">
+          {toastMessage}
+        </div>
+      )}
+
       {/* Main Content Area */}
       <main className={`relative z-10 flex-1 w-full min-h-0 flex flex-col items-center p-6 pb-[120px] ${activeTab === 'SCAN' ? 'justify-center' : 'justify-start'}`}>
         
@@ -127,7 +136,11 @@ export default function App() {
         )}
 
         {activeTab === 'DAO' && (
-          <DaoTerminal />
+          <DaoTerminal onMintUSDG={() => {
+            setUsdgBalance(prev => prev + 50);
+            setToastMessage("[ CONSENSUS REACHED. 50 USDG MINTED TO RGB VAULT. ]");
+            setTimeout(() => setToastMessage(null), 3000);
+          }} />
         )}
 
         {activeTab === 'FEED' && (
@@ -139,6 +152,7 @@ export default function App() {
             isIdentityConnected={isIdentityConnected}
             pubkey={pubkey}
             npub={npub}
+            usdgBalance={usdgBalance}
             onConnect={handleConnect}
             onLogout={handleLogout}
           />
