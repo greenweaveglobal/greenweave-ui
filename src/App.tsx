@@ -67,8 +67,12 @@ export default function App() {
 
   if (showEve) {
     return (
-      <div className="animate-in fade-in duration-1000 w-screen h-[100dvh] bg-black overflow-hidden">
-        <Scanner />
+      <div className="animate-in fade-in duration-1000 w-screen h-[100dvh] bg-black overflow-hidden relative">
+        <Scanner onClose={() => {
+          setShowEve(false);
+          setFading(false);
+          setActiveTab('HOME'); // Return to Home dashboard
+        }} />
       </div>
     );
   }

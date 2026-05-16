@@ -6,15 +6,17 @@ type ScannerStatus = "SCANNING" | "ANALYZING" | "RESULT";
 
 interface ScannerProps {
   onAddLog?: (msg: string) => void;
+  onClose?: () => void;
 }
 
-export default function Scanner({ onAddLog }: ScannerProps) {
+export default function Scanner({ onAddLog, onClose }: ScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [logs, setLogs] = useState<string[]>(["EVE Core v0.9.1 online.", "Initializing ocular link..."]);
   const [flash, setFlash] = useState(false);
   const [status, setStatus] = useState<ScannerStatus>("SCANNING");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [broadcastPhase, setBroadcastPhase] = useState<'IDLE'|'UPLOADING'|'ETCHING'>('IDLE');
   const [signatureError, setSignatureError] = useState(false);
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{
@@ -185,6 +187,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
   const handleBroadcast = async () => {
     if (isProcessing || !analysisResult) return;
     setIsProcessing(true);
+    setBroadcastPhase('UPLOADING');
     
     addLog("[INITIATING BROADCAST SEQUENCE]");
     addLog(`[${analysisResult.species.toUpperCase()} VERIFIED] Preparing cryptographic payload...`);
@@ -193,9 +196,43 @@ export default function Scanner({ onAddLog }: ScannerProps) {
     playOcularSound('zap');
     setTimeout(() => setFlash(false), 200);
 
+    // Upload image evidence
+    let mediaUrl = "";
+    if (canvasRef.current) {
+      addLog("[ UPLOADING VISUAL PROOF... ]");
+      const blob = await new Promise<Blob | null>((res) => canvasRef.current!.toBlob(res, "image/jpeg", 0.8));
+      if (blob) {
+        try {
+          const formData = new FormData();
+          formData.append("fileToUpload", blob, "biomass_proof.jpg"); // nostr.build uses fileToUpload
+          formData.append("file", blob, "biomass_proof.jpg"); // fallback key
+          
+          const uploadRes = await fetch("https://nostr.build/api/v2/upload/files", {
+            method: "POST",
+            body: formData,
+          });
+          
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            if (data?.data?.[0]?.url) {
+              mediaUrl = "\n\n" + data.data[0].url;
+              addLog("[ VISUAL PROOF UPLOADED ]");
+            }
+          } else {
+             addLog("WARNING: Image upload endpoint rejected payload.");
+          }
+        } catch (e) {
+          console.error("Media upload failed", e);
+          addLog("WARNING: Image upload failed, proceeding with text only.");
+        }
+      }
+    }
+
+    setBroadcastPhase('ETCHING');
+
     // 1. Construct the Note Content
     const dispConfidence = (analysisResult.confidence * 100).toFixed(1) + '%';
-    const content = `Biomass Genesis Scan initiated.\nTarget: ${analysisResult.species}\nStatus: Living Asset Confirmed. 🌱⚡️\nConfidence: ${dispConfidence}\n\n${analysisResult.description}`;
+    const content = `Biomass Genesis Scan initiated.\nTarget: ${analysisResult.species}\nStatus: Living Asset Confirmed. 🌱⚡️\nConfidence: ${dispConfidence}\n\n${analysisResult.description}${mediaUrl}`;
     
     const eventTemplate = {
       kind: 1,
@@ -263,6 +300,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
         
         setIsProcessing(false);
         setBroadcastSuccess(true);
+        setBroadcastPhase('IDLE');
         // Success case - go back to scanning
         setTimeout(() => {
           handleRescan();
@@ -276,6 +314,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
       addLog(`[TRANSMISSION ABORTED] ${err.message}`);
       setSignatureError(true);
       setIsProcessing(false);
+      setBroadcastPhase('IDLE');
       
       alert(`Broadcast Failed: ${err.message}`);
       
@@ -290,6 +329,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
     setStatus("SCANNING");
     setAnalysisResult(null);
     setBroadcastSuccess(false);
+    setBroadcastPhase('IDLE');
     if (videoRef.current) videoRef.current.play();
     addLog("[SYSTEM RESET] SCANNING RESUMED");
   };
@@ -383,7 +423,8 @@ export default function Scanner({ onAddLog }: ScannerProps) {
                 }`}
               >
                 {broadcastSuccess ? "[ BROADCAST SUCCESSFUL ⚡️ ]" :
-                 isProcessing ? "[ ETCHING... ]" : 
+                 broadcastPhase === 'UPLOADING' ? "[ UPLOADING VISUAL PROOF... ]" :
+                 broadcastPhase === 'ETCHING' ? "[ ETCHING... ]" :
                  signatureError ? "[ SIGNATURE TIMEOUT - RETRY ]" : 
                  "[ BROADCAST ]"}
               </button>
@@ -400,9 +441,19 @@ export default function Scanner({ onAddLog }: ScannerProps) {
       )}
 
       {/* Fixed UI Components */}
-      <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-white/30 z-20" />
-      <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-white/30 z-20" />
-      <div className="absolute bottom-24 right-4 w-4 h-4 border-b-2 border-r-2 border-white/30 z-20" />
+      <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-white/30 z-20 pointer-events-none" />
+      <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-white/30 z-20 pointer-events-none" />
+      <div className="absolute bottom-24 right-4 w-4 h-4 border-b-2 border-r-2 border-white/30 z-20 pointer-events-none" />
+      
+      {/* Navigation Button */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-6 left-6 z-50 w-12 h-12 flex flex-col items-center justify-center bg-zinc-900/80 backdrop-blur-md rounded-full border border-white/20 text-white hover:bg-white/20 transition-all active:scale-95 text-xl font-bold font-sans shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+        >
+          ✕
+        </button>
+      )}
       
       {/* System Status Top Right */}
       <div className="absolute top-6 right-6 text-xs text-[#39FF14] font-black uppercase tracking-[0.2em] z-30 mix-blend-screen text-right">
