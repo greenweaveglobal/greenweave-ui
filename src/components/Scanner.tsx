@@ -16,6 +16,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
   const [status, setStatus] = useState<ScannerStatus>("SCANNING");
   const [isProcessing, setIsProcessing] = useState(false);
   const [signatureError, setSignatureError] = useState(false);
+  const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{
     species: string;
     confidence: number;
@@ -261,6 +262,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
         addLog(`[BIOMASS PERMANENTLY ETCHED] SUCCESSFUL ON ${successfulPublishes} RELAYS.`);
         
         setIsProcessing(false);
+        setBroadcastSuccess(true);
         // Success case - go back to scanning
         setTimeout(() => {
           handleRescan();
@@ -275,7 +277,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
       setSignatureError(true);
       setIsProcessing(false);
       
-      alert(`WARNING: ${err.message}`);
+      alert(`Broadcast Failed: ${err.message}`);
       
       // Revert button status after 3 seconds to allow RETRY
       setTimeout(() => {
@@ -287,6 +289,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
   const handleRescan = () => {
     setStatus("SCANNING");
     setAnalysisResult(null);
+    setBroadcastSuccess(false);
     if (videoRef.current) videoRef.current.play();
     addLog("[SYSTEM RESET] SCANNING RESUMED");
   };
@@ -373,16 +376,20 @@ export default function Scanner({ onAddLog }: ScannerProps) {
             <div className="space-y-4">
               <button 
                 onClick={handleBroadcast}
-                disabled={isProcessing || !analysisResult.isBiomass}
+                disabled={isProcessing || !analysisResult.isBiomass || broadcastSuccess}
                 className={`w-full py-5 text-sm font-black uppercase tracking-[0.25em] transition-all active:scale-95 disabled:opacity-50 ${
+                  broadcastSuccess ? 'bg-amber-500 text-black border-2 border-amber-500 shadow-[0_0_20px_#f59e0b]' :
                   signatureError ? 'bg-red-600 text-white animate-shake' : 'bg-[#39FF14] text-black'
                 }`}
               >
-                {isProcessing ? "[ ETCHING... ]" : signatureError ? "[ SIGNATURE TIMEOUT - RETRY ]" : "[ BROADCAST ]"}
+                {broadcastSuccess ? "[ BROADCAST SUCCESSFUL ⚡️ ]" :
+                 isProcessing ? "[ ETCHING... ]" : 
+                 signatureError ? "[ SIGNATURE TIMEOUT - RETRY ]" : 
+                 "[ BROADCAST ]"}
               </button>
               <button 
                 onClick={handleRescan}
-                disabled={isProcessing}
+                disabled={isProcessing || broadcastSuccess}
                 className="w-full py-3 border-2 border-white/40 text-white text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all disabled:opacity-0"
               >
                 [ DISCARD / RESCAN ]
