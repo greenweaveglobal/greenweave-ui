@@ -4,14 +4,18 @@ interface DaoTerminalProps {
   onMintUSDG?: (propId: string) => void;
   onSpendTreasury?: (propId: string) => void;
   onDeployProposal?: (cost: number) => void;
+  onBurnNode?: (propId: string, burnAmount: number) => void;
   npub?: string | null;
   resolvedProposals: string[];
   daoTreasurySats: number;
   usdgBalance: number;
+  totalSupply: number;
+  halvingClock: number;
 }
 
-export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployProposal, npub, resolvedProposals, daoTreasurySats, usdgBalance }: DaoTerminalProps) {
+export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployProposal, onBurnNode, npub, resolvedProposals, daoTreasurySats, usdgBalance, totalSupply, halvingClock }: DaoTerminalProps) {
   const isProp881Resolved = resolvedProposals.includes("prop-881");
+  const isProp882Resolved = resolvedProposals.includes("prop-882");
   const isProp883Resolved = resolvedProposals.includes("prop-883");
   const [proposalInput, setProposalInput] = useState("");
   const [proposalType, setProposalType] = useState<"SIGNAL" | "TREASURY" | "PENALTY">("SIGNAL");
@@ -20,6 +24,13 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
     if (isProp881Resolved) return;
     if (onMintUSDG) {
       onMintUSDG("prop-881");
+    }
+  };
+
+  const handleApproveProp882 = () => {
+    if (isProp882Resolved) return;
+    if (onBurnNode) {
+      onBurnNode("prop-882", 20); // Slashing 20 USDG
     }
   };
 
@@ -52,13 +63,26 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
         Network Governance
       </div>
 
-      {/* Network Treasury */}
+      {/* Network Treasury & Engine Metrics */}
       <div className="w-full bg-zinc-950 border-2 border-amber-500/50 p-4 mb-6 text-center font-mono shadow-[0_0_20px_rgba(245,158,11,0.2)]">
         <div className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-1">
           Network Treasury
         </div>
-        <div className="text-xl font-black text-amber-400">
+        <div className="text-xl font-black text-amber-400 mb-4">
           ⚡ {daoTreasurySats.toLocaleString()} SATS
+        </div>
+        
+        {/* Tokenomics Engine Sub-Panel */}
+        <div className="border-t border-amber-500/20 pt-3 flex flex-col gap-2 text-left">
+           <div className="text-[10px] text-zinc-500 tracking-widest uppercase text-center mb-1">Engine Metrics</div>
+           <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest">
+             <span className="text-zinc-400">Total Supply:</span>
+             <span className="text-amber-500">{totalSupply.toFixed(2)} / 21M USDG</span>
+           </div>
+           <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest">
+             <span className="text-zinc-400">Halving Clock:</span>
+             <span className="text-cyan-400">{halvingClock} / 10K Epoch</span>
+           </div>
         </div>
       </div>
 
@@ -185,27 +209,60 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
            )}
         </div>
 
-        {/* Proposal 2 */}
-        <div className="w-full bg-black border-2 border-zinc-800 p-4 relative group text-left shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+        {/* Proposal 2 (Penalty / Slashing / Burn) */}
+        <div className="w-full bg-black border-2 border-red-500/30 p-4 relative group text-left shadow-[0_0_20px_rgba(239,68,68,0.1)]">
            <div className="flex justify-between items-center mb-2">
              <div className="text-xs text-zinc-500 font-mono tracking-widest uppercase">Prop-882</div>
-             <div className="text-[10px] text-red-500 font-bold bg-red-500/10 px-2 py-0.5 uppercase tracking-wider">Expired</div>
+             {!isProp882Resolved ? (
+               <div className="text-[10px] text-red-500 font-bold bg-red-500/10 px-2 py-0.5 uppercase tracking-wider">Active</div>
+             ) : (
+               <div className="text-[10px] text-red-500 font-bold bg-red-500/10 px-2 py-0.5 uppercase tracking-wider">Resolved - SLASHED</div>
+             )}
            </div>
            
            <div className="text-sm text-white font-bold tracking-wide uppercase mb-3">
-             Burn Invalid Biomass Entry
+             <span className="text-red-500">[ PENALTY ]</span> Slash Malicious Node #431
+           </div>
+
+           <div className="flex flex-col gap-1 mb-4 text-xs font-mono text-red-500/70 bg-red-500/5 p-2 border border-red-500/10">
+             <div><span className="text-zinc-500">TARGET:</span> npub1spoof...</div>
+             <div><span className="text-zinc-500">OFFENSE:</span> Falsified Drone Telemetry</div>
+             <div><span className="text-zinc-500">BURN ALG:</span> 100% SLASH STAKE (20 USDG)</div>
+             <div><span className="text-zinc-500">TOTAL SUPPLY IMPACT:</span> -20 USDG</div>
            </div>
            
-           <div className="flex flex-col gap-4">
-             <div className="w-full bg-red-500/5 border border-red-500/20 py-2 text-center">
-               <div className="text-[10px] font-mono text-red-500 font-bold uppercase tracking-widest">
-                 [ PROPOSAL EXPIRED - CONSENSUS FAILED ]
+           {!isProp882Resolved ? (
+             <div className="flex flex-col gap-4">
+               <div className="w-full bg-red-500/5 border border-red-500/20 py-2 text-center">
+                 <div className="text-[10px] font-mono text-red-500 font-bold uppercase tracking-widest">
+                   [ TIME REMAINING: 5 Days 2 Hrs (Block Height +640) ]
+                 </div>
+               </div>
+               <div>
+                 <div className="text-[10px] font-bold text-amber-500/80 mb-1 uppercase tracking-widest text-center">
+                   Network Consensus Required
+                 </div>
+                 <div className="text-[10px] text-zinc-500 text-center uppercase tracking-widest">
+                   Consensus Threshold: 66.6% Node Weight
+                 </div>
+               </div>
+               <div className="flex flex-col gap-2">
+                 <button 
+                   onClick={handleApproveProp882}
+                   className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase"
+                 >
+                   APPROVE SLASHING
+                 </button>
+                 <button className="w-full border-2 border-zinc-500/50 text-zinc-500 font-black text-[10px] tracking-widest py-3 hover:bg-zinc-500 hover:text-black transition-colors uppercase">
+                   REJECT SLASHING
+                 </button>
                </div>
              </div>
+           ) : (
              <div className="w-full border-2 border-zinc-800 text-zinc-500 font-black text-[10px] tracking-widest py-2 uppercase text-center cursor-not-allowed">
                PROPOSAL CLOSED
              </div>
-           </div>
+           )}
         </div>
         {/* Proposal 3: Treasury Expenditure */}
         <div className="w-full bg-black border-2 border-amber-500/30 p-4 relative group text-left shadow-[0_0_20px_rgba(245,158,11,0.1)]">

@@ -18,6 +18,45 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [resolvedProposals, setResolvedProposals] = useState<string[]>([]);
 
+  const MACRO_RULES = {
+    MAX_SUPPLY: 21000000,    // Mechanism 3: Absolute Hard Cap
+    HALVING_EPOCH: 10000,    // Mechanism 2: Halves every 10,000 processed nodes
+    BASE_REWARD: 50          // Initial reward per valid scan
+  };
+
+  const [totalSupply, setTotalSupply] = useState(0); // Can go UP (Mint) or DOWN (Burn)
+  const [halvingClock, setHalvingClock] = useState(0); // Strictly goes UP (Total historical scans)
+
+  // MECHANISM 2: ECOLOGICAL HALVING
+  const calculateCurrentReward = (clockParams: number) => {
+    const epoch = Math.floor(clockParams / MACRO_RULES.HALVING_EPOCH);
+    const currentReward = MACRO_RULES.BASE_REWARD / Math.pow(2, epoch);
+    return currentReward > 0.00000001 ? currentReward : 0; // Dust limit
+  };
+
+  // MECHANISM 1 & 3: MINTING WITH HARD CAP
+  const executeMint = () => {
+    const reward = calculateCurrentReward(halvingClock);
+    
+    // Mechanism 3: The Wall (Hard Cap Check)
+    if (totalSupply + reward > MACRO_RULES.MAX_SUPPLY) {
+      console.error("[ CRITICAL ] HARD CAP REACHED. CANNOT MINT.");
+      return 0; 
+    }
+    
+    // Update States
+    setTotalSupply(prev => prev + reward);
+    setHalvingClock(prev => prev + 1); // Clock ticks forward
+    return reward;
+  };
+
+  // MECHANISM 1: THE BURN (DEATH/SLASHING)
+  const executeBurn = (burnAmount: number) => {
+    // Burns reduce the total supply permanently, reflecting L0 death
+    // Note: We DO NOT reverse the halvingClock. The effort was already spent.
+    setTotalSupply(prev => Math.max(0, prev - burnAmount)); // Cannot go below 0
+  };
+
   useEffect(() => {
     const loadIdentity = () => {
       const nodeKey = localStorage.getItem('greenweave_nsec');
@@ -148,12 +187,20 @@ export default function App() {
             resolvedProposals={resolvedProposals} 
             daoTreasurySats={daoTreasurySats} 
             usdgBalance={usdgBalance}
+            totalSupply={totalSupply}
+            halvingClock={halvingClock}
             onMintUSDG={(propId) => {
               if (!resolvedProposals.includes(propId)) {
-                setUsdgBalance(prev => prev + 50);
-                setResolvedProposals(prev => [...prev, propId]);
-                setToastMessage("[ CONSENSUS REACHED. 50 USDG MINTED TO RGB VAULT. ]");
-                setTimeout(() => setToastMessage(null), 3000);
+                const reward = executeMint();
+                if (reward > 0) {
+                  setUsdgBalance(prev => prev + reward);
+                  setResolvedProposals(prev => [...prev, propId]);
+                  setToastMessage(`[ CONSENSUS REACHED. ${reward.toFixed(2)} USDG MINTED. ]`);
+                  setTimeout(() => setToastMessage(null), 3000);
+                } else {
+                  setToastMessage("[ ERROR: HARD CAP REACHED. CANNOT MINT. ]");
+                  setTimeout(() => setToastMessage(null), 3000);
+                }
               }
             }} 
             onSpendTreasury={(propId) => {
@@ -171,6 +218,16 @@ export default function App() {
             }}
             onDeployProposal={(cost) => {
               setUsdgBalance(prev => prev - cost);
+            }}
+            onBurnNode={(propId, burnAmount) => {
+              if (!resolvedProposals.includes(propId)) {
+                executeBurn(burnAmount);
+                // Deduct from the user's local balance as mock "target"
+                setUsdgBalance(prev => Math.max(0, prev - burnAmount));
+                setResolvedProposals(prev => [...prev, propId]);
+                setToastMessage(`[ CONSENSUS REACHED. ${burnAmount} USDG SLASHED FROM MALICIOUS NODE AND BURNED. ]`);
+                setTimeout(() => setToastMessage(null), 3000);
+              }
             }}
           />
         )}
