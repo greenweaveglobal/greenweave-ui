@@ -150,6 +150,11 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
            
            {!isProp881Resolved ? (
              <div className="flex flex-col gap-4">
+               <div className="w-full bg-cyan-400/5 border border-cyan-400/20 py-2 text-center">
+                 <div className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-widest">
+                   [ TIME REMAINING: 6 Days 14 Hrs (Block Height +824) ]
+                 </div>
+               </div>
                <div>
                  <div className="text-[10px] font-bold text-amber-500/80 mb-1 uppercase tracking-widest text-center">
                    Network Consensus Required
@@ -184,7 +189,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
         <div className="w-full bg-black border-2 border-zinc-800 p-4 relative group text-left shadow-[0_0_20px_rgba(0,0,0,0.5)]">
            <div className="flex justify-between items-center mb-2">
              <div className="text-xs text-zinc-500 font-mono tracking-widest uppercase">Prop-882</div>
-             <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 uppercase tracking-wider">Active</div>
+             <div className="text-[10px] text-red-500 font-bold bg-red-500/10 px-2 py-0.5 uppercase tracking-wider">Expired</div>
            </div>
            
            <div className="text-sm text-white font-bold tracking-wide uppercase mb-3">
@@ -192,24 +197,13 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
            </div>
            
            <div className="flex flex-col gap-4">
-             <div>
-               <div className="text-[10px] font-bold text-amber-500/80 mb-1 uppercase tracking-widest text-center">
-                 Network Consensus Required
-               </div>
-               <div className="text-[10px] text-zinc-500 text-center uppercase tracking-widest">
-                 Consensus Threshold: 66.6% Node Weight
+             <div className="w-full bg-red-500/5 border border-red-500/20 py-2 text-center">
+               <div className="text-[10px] font-mono text-red-500 font-bold uppercase tracking-widest">
+                 [ PROPOSAL EXPIRED - CONSENSUS FAILED ]
                </div>
              </div>
-             <div className="flex flex-col gap-2">
-               <button className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase">
-                 APPROVE & STAKE 5 USDG
-               </button>
-               <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                 REJECT & STAKE 5 USDG
-               </button>
-               <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
-                 *Warning: Malicious voting will result in 100% slashing of staked assets.*
-               </div>
+             <div className="w-full border-2 border-zinc-800 text-zinc-500 font-black text-[10px] tracking-widest py-2 uppercase text-center cursor-not-allowed">
+               PROPOSAL CLOSED
              </div>
            </div>
         </div>
@@ -236,12 +230,17 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
            
            {!isProp883Resolved ? (
              <div className="flex flex-col gap-4">
+               <div className="w-full bg-amber-500/5 border border-amber-500/20 py-2 text-center">
+                 <div className="text-[10px] font-mono text-amber-500 font-bold uppercase tracking-widest">
+                   [ TIME REMAINING: 18 Hrs 12 Mins (Block Height +24) ]
+                 </div>
+               </div>
                <div>
                  <div className="text-[10px] font-bold text-amber-500/80 mb-1 uppercase tracking-widest text-center">
                    Network Consensus Required
                  </div>
                  <div className="text-[10px] text-zinc-500 text-center uppercase tracking-widest">
-                   Consensus Threshold: 51.0% Node Weight
+                   Consensus Threshold: 66.6% Node Weight
                  </div>
                </div>
                <div className="flex flex-col gap-2">
