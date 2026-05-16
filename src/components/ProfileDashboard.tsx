@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ZapModal from "./ZapModal";
 import { Zap } from "lucide-react";
-import { SimplePool } from "nostr-tools";
+import { SimplePool, nip19, getPublicKey } from "nostr-tools";
 
 interface ProfileDashboardProps {
   isIdentityConnected: boolean;
@@ -27,8 +27,28 @@ export default function ProfileDashboard({
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
 
   const fetchProfileData = async () => {
-    if (!isIdentityConnected || !pubkey) return;
+    if (!isIdentityConnected) return;
     setIsFetchingProfile(true);
+
+    let pubkeyHex = "";
+    try {
+      const storedNodeKey = localStorage.getItem('greenweave_nsec') || "";
+      if (storedNodeKey.startsWith('nsec')) {
+        const decoded = nip19.decode(storedNodeKey);
+        pubkeyHex = getPublicKey(decoded.data as Uint8Array);
+      } else if (storedNodeKey.startsWith('npub')) {
+        pubkeyHex = nip19.decode(storedNodeKey).data as string;
+      } else if (storedNodeKey.length === 64) {
+        pubkeyHex = getPublicKey(new Uint8Array(storedNodeKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+      } else {
+        throw new Error("Unknown key format");
+      }
+    } catch (e) {
+      console.error("Key derivation failed", e);
+      setIsFetchingProfile(false);
+      return;
+    }
+
     const pool = new SimplePool();
     const relays = [
       'wss://purplepag.es', 
@@ -39,9 +59,10 @@ export default function ProfileDashboard({
     try {
       const events = await pool.querySync(relays, {
         kinds: [0],
-        authors: [pubkey],
+        authors: [pubkeyHex],
         limit: 10
       });
+      console.log("Fetched Kind 0:", events);
       if (events.length > 0) {
         events.sort((a, b) => b.created_at - a.created_at);
         try {
@@ -164,15 +185,6 @@ export default function ProfileDashboard({
       
       {/* Identity Card */}
       <div className="w-full flex flex-col items-center justify-center p-6 border border-[#39FF14]/50 rounded-lg bg-black/40 min-h-[140px] gap-3 mb-8 shadow-[0_0_20px_rgba(57,255,20,0.1)] relative">
-        <button 
-          onClick={fetchProfileData}
-          disabled={isFetchingProfile}
-          className="absolute top-2 right-3 text-[10px] font-mono text-zinc-500 hover:text-[#39FF14] uppercase tracking-widest transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Force fetch newest profile data"
-        >
-          {isFetchingProfile ? "[ SYNCING... ]" : "[ REFRESH METADATA ]"}
-        </button>
-
         {profile?.picture ? (
           <img 
             src={profile.picture} 
@@ -189,16 +201,26 @@ export default function ProfileDashboard({
           <div className="text-lg text-[#39FF14] font-mono tracking-widest text-center">
              {profile?.name || profile?.display_name || "ANONYMOUS NODE"}
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            <div className="text-xs font-mono text-zinc-400 tracking-widest">
-              {shortenedNpub}
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-mono text-zinc-400 tracking-widest">
+                {shortenedNpub}
+              </div>
+              <button 
+                onClick={() => navigator.clipboard.writeText(npub || "")}
+                className="text-zinc-500 hover:text-[#39FF14] transition-colors shrink-0"
+                title="Copy npub"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
             </div>
             <button 
-              onClick={() => navigator.clipboard.writeText(npub || "")}
-              className="text-zinc-500 hover:text-[#39FF14] transition-colors shrink-0"
-              title="Copy npub"
+              onClick={fetchProfileData}
+              disabled={isFetchingProfile}
+              className="text-xs text-[#39FF14]/70 hover:text-[#39FF14] cursor-pointer underline decoration-dashed transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 uppercase tracking-widest"
+              title="Force fetch newest profile data"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              {isFetchingProfile ? "[ SYNCING... ]" : "[ REFRESH METADATA ]"}
             </button>
           </div>
         </div>
