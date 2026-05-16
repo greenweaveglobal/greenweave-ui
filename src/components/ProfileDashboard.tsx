@@ -24,36 +24,53 @@ export default function ProfileDashboard({
   const [nodeKeyInput, setNodeKeyInput] = useState("");
   const [hasNodeKey, setHasNodeKey] = useState(false);
   const [profile, setProfile] = useState<{ name?: string, display_name?: string, picture?: string } | null>(null);
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+
+  const fetchProfileData = async () => {
+    if (!isIdentityConnected || !pubkey) return;
+    setIsFetchingProfile(true);
+    const pool = new SimplePool();
+    const relays = [
+      'wss://relay.damus.io',
+      'wss://nos.lol',
+      'wss://relay.primal.net',
+      'wss://nostr.wine',
+      'wss://relay.snort.social'
+    ];
+    try {
+      const events = await pool.querySync(relays, {
+        kinds: [0],
+        authors: [pubkey],
+        limit: 10
+      });
+      if (events.length > 0) {
+        events.sort((a, b) => b.created_at - a.created_at);
+        try {
+          if (events[0].content) {
+            const data = JSON.parse(events[0].content);
+            setProfile(data);
+          } else {
+            console.warn("Profile event had empty content.");
+          }
+        } catch (e) {
+          console.error("Failed to parse kind 0 event content:", e);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch profile metadata:", e);
+    } finally {
+      pool.close(relays);
+      setIsFetchingProfile(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
-    if (isIdentityConnected && pubkey) {
-      const fetchProfile = async () => {
-        const pool = new SimplePool();
-        const relays = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
-        try {
-          const events = await pool.querySync(relays, {
-            kinds: [0],
-            authors: [pubkey],
-            limit: 1
-          });
-          if (active && events.length > 0) {
-            try {
-              const data = JSON.parse(events[0].content);
-              setProfile(data);
-            } catch (e) {
-              console.error("Failed to parse kind 0", e);
-            }
-          }
-        } catch (e) {
-          console.error("Failed to fetch profile", e);
-        } finally {
-          pool.close(relays);
-        }
-      };
-      fetchProfile();
+    if (active) {
+      fetchProfileData();
     }
     return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isIdentityConnected, pubkey]);
 
   useEffect(() => {
@@ -147,7 +164,16 @@ export default function ProfileDashboard({
       </div>
       
       {/* Identity Card */}
-      <div className="w-full flex flex-col items-center justify-center p-6 border border-[#39FF14]/50 rounded-lg bg-black/40 min-h-[140px] gap-3 mb-8 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
+      <div className="w-full flex flex-col items-center justify-center p-6 border border-[#39FF14]/50 rounded-lg bg-black/40 min-h-[140px] gap-3 mb-8 shadow-[0_0_20px_rgba(57,255,20,0.1)] relative">
+        <button 
+          onClick={fetchProfileData}
+          disabled={isFetchingProfile}
+          className="absolute top-2 right-3 text-[10px] font-mono text-zinc-500 hover:text-[#39FF14] uppercase tracking-widest transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Force fetch newest profile data"
+        >
+          {isFetchingProfile ? "[ SYNCING... ]" : "[ REFRESH METADATA ]"}
+        </button>
+
         {profile?.picture ? (
           <img 
             src={profile.picture} 
