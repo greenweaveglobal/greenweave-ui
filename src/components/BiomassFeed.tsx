@@ -32,57 +32,46 @@ export default function BiomassFeed() {
   const [feedPosts, setFeedPosts] = useState<LivePost[]>([]);
 
   useEffect(() => {
-    let active = true;
+    let isMounted = true;
     const fetchEvents = async () => {
       const pool = new SimplePool();
       const relays = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net'];
       
-      const sub = pool.subscribeMany(
-        relays,
-        [
-          {
-            kinds: [1],
-            '#t': ['GreenWeave'],
-            limit: 50
-          }
-        ] as any,
-        {
-          onevent(event) {
-            if (!active) return;
-  
-            const newPost = {
-              id: event.id,
-              author: nip19.npubEncode(event.pubkey).substring(0, 10) + "...",
-              pubkey: event.pubkey,
-              createdAt: event.created_at,
-              timestamp: getRelativeTime(event.created_at),
-              content: event.content,
-              species: "Biomass",
-              confidence: "??",
-              description: "",
-              location: "",
-              energyToll: 0
-            };
-  
-            setFeedPosts(prev => {
-              if (prev.some(p => p.id === newPost.id)) return prev;
-              const newFeed = [...prev, newPost];
-              return newFeed.sort((a,b) => b.createdAt - a.createdAt);
-            });
-          }
-        }
-      );
+      try {
+        const events = await pool.querySync(relays, {
+          kinds: [1],
+          '#t': ['GreenWeave', 'BiomassProof', 'greenweave'],
+          limit: 20
+        });
 
-      return () => {
-        active = false;
-        sub.close();
+        if (!isMounted) return;
+
+        const formattedPosts = events.map(event => ({
+          id: event.id,
+          author: nip19.npubEncode(event.pubkey).substring(0, 10) + "...",
+          pubkey: event.pubkey,
+          createdAt: event.created_at,
+          timestamp: getRelativeTime(event.created_at),
+          content: event.content,
+          species: "Biomass",
+          confidence: "??",
+          description: "",
+          location: "",
+          energyToll: 0
+        })).sort((a, b) => b.createdAt - a.createdAt);
+
+        setFeedPosts(formattedPosts);
+      } catch (err) {
+        console.error("Error fetching events:", err);
+      } finally {
         pool.close(relays);
-      };
+      }
     };
 
-    const cleanup = fetchEvents();
+    fetchEvents();
+
     return () => {
-      cleanup.then(clean => clean());
+      isMounted = false;
     };
   }, []);
 
