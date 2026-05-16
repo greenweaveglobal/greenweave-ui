@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import Scanner from "./components/Scanner";
 import ProfileDashboard from "./components/ProfileDashboard";
 import BiomassFeed from "./components/BiomassFeed";
-import GenesisMap from "./components/GenesisMap";
+import MarketDashboard from "./components/MarketDashboard";
+import DaoTerminal from "./components/DaoTerminal";
 import { nip19, getPublicKey } from "nostr-tools";
 
 export default function App() {
@@ -11,7 +12,7 @@ export default function App() {
   const [pubkey, setPubkey] = useState<string | null>(null);
   const [npub, setNpub] = useState<string | null>(null);
   const [isIdentityConnected, setIsIdentityConnected] = useState(false);
-  const [activeTab, setActiveTab] = useState<'HOME' | 'MAP' | 'FEED' | 'ME'>('HOME');
+  const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'DAO' | 'ME'>('SCAN');
 
   useEffect(() => {
     const loadIdentity = () => {
@@ -72,7 +73,7 @@ export default function App() {
         <Scanner onClose={() => {
           setShowEve(false);
           setFading(false);
-          setActiveTab('HOME'); // Return to Home dashboard
+          setActiveTab('SCAN'); // Return to Home dashboard
         }} />
       </div>
     );
@@ -86,9 +87,9 @@ export default function App() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-black to-black opacity-50 pointer-events-none" />
 
       {/* Main Content Area */}
-      <main className={`relative z-10 flex-1 w-full min-h-0 flex flex-col items-center p-6 pb-[120px] ${activeTab === 'HOME' ? 'justify-center' : 'justify-start'}`}>
+      <main className={`relative z-10 flex-1 w-full min-h-0 flex flex-col items-center p-6 pb-[120px] ${activeTab === 'SCAN' ? 'justify-center' : 'justify-start'}`}>
         
-        {activeTab === 'HOME' && (
+        {activeTab === 'SCAN' && (
           <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in zoom-in-95 duration-500">
             {/* Diamond Logo */}
             <div className="w-14 h-14 mb-8 rotate-45 border-2 border-amber-400 relative flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)]">
@@ -121,8 +122,12 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'MAP' && (
-          <GenesisMap />
+        {activeTab === 'MARKET' && (
+          <MarketDashboard />
+        )}
+
+        {activeTab === 'DAO' && (
+          <DaoTerminal />
         )}
 
         {activeTab === 'FEED' && (
@@ -143,11 +148,11 @@ export default function App() {
       {/* Persistence Interface (Fixed Navigation) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-8 pt-4 bg-gradient-to-t from-black via-black to-transparent">
         <div className="max-w-md mx-auto flex justify-around items-center bg-zinc-900 border-2 border-amber-500/40 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden">
-          {(['HOME', 'MAP', 'FEED', 'ME'] as const).map(tab => (
+          {(['SCAN', 'FEED', 'MARKET', 'DAO', 'ME'] as const).map(tab => (
             <button 
               key={tab} 
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 transition-all duration-300 py-4 text-xs tracking-widest uppercase font-black relative flex flex-col items-center gap-1 ${activeTab === tab ? 'text-amber-400 bg-amber-500/10' : 'text-zinc-500 hover:text-amber-500/80'}`}
+              className={`flex-1 transition-all duration-300 py-4 text-[10px] tracking-widest uppercase font-black relative flex flex-col items-center gap-1 ${activeTab === tab ? 'text-amber-400 bg-amber-500/10' : 'text-zinc-500 hover:text-amber-500/80'}`}
             >
               <div className={`w-1.5 h-1.5 rounded-full bg-amber-400 mb-1 transition-all duration-300 ${activeTab === tab ? 'opacity-100 scale-125 shadow-[0_0_8px_#f59e0b]' : 'opacity-0 scale-50'}`} />
               {tab}

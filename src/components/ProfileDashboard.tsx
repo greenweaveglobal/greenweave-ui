@@ -298,6 +298,27 @@ export default function ProfileDashboard({
         )}
       </div>
       
+      {/* RGB Asset Vault */}
+      <div className="w-full mb-10">
+        <div className="text-xs font-bold text-[#39FF14] mb-3 uppercase tracking-widest drop-shadow-[0_0_5px_rgba(57,255,20,0.5)]">
+          [ RGB ASSET VAULT ]
+        </div>
+        
+        <div className="bg-zinc-950 border-2 border-cyan-400/30 p-5 flex flex-col gap-2 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
+           <div className="flex justify-between items-center w-full mb-2">
+             <span className="text-xs text-zinc-400 font-mono tracking-widest uppercase">Asset</span>
+             <span className="text-[10px] text-cyan-400 font-bold bg-cyan-400/10 px-2 py-0.5 rounded-sm uppercase tracking-wider">Client Verified</span>
+           </div>
+           <div className="flex justify-between items-end">
+             <span className="text-3xl font-black text-white tracking-wider">1,450.00</span>
+             <span className="text-lg font-bold text-cyan-400 tracking-widest mb-1">USDG</span>
+           </div>
+           <div className="text-[10px] text-zinc-500 font-mono mt-2 tracking-widest uppercase">
+             Contract: rgb:u78x...92a1
+           </div>
+        </div>
+      </div>
+
       <div className="text-xs font-bold text-amber-500/80 mb-3 uppercase tracking-widest">
         BIOMASS PORTFOLIO:
       </div>
