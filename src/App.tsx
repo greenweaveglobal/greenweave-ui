@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Scanner from "./components/Scanner";
 import ProfileDashboard from "./components/ProfileDashboard";
 import BiomassFeed from "./components/BiomassFeed";
+import GenesisMap from "./components/GenesisMap";
 import { nip19, getPublicKey } from "nostr-tools";
 
 export default function App() {
@@ -121,9 +122,7 @@ export default function App() {
         )}
 
         {activeTab === 'MAP' && (
-          <div className="text-sm font-bold tracking-[0.3em] text-amber-400 uppercase animate-in fade-in duration-500 bg-amber-950/20 px-8 py-4 border border-amber-500/30">
-            [ Map Module Offline ]
-          </div>
+          <GenesisMap />
         )}
 
         {activeTab === 'FEED' && (
