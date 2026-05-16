@@ -1,23 +1,23 @@
 import { useState } from "react";
 
 interface DaoTerminalProps {
-  onMintUSDG?: () => void;
+  onMintUSDG?: (propId: string) => void;
   npub?: string | null;
+  resolvedProposals: string[];
 }
 
-export default function DaoTerminal({ onMintUSDG, npub }: DaoTerminalProps) {
-  const [prop881Status, setProp881Status] = useState<'Active' | 'Resolved'>('Active');
+export default function DaoTerminal({ onMintUSDG, npub, resolvedProposals }: DaoTerminalProps) {
+  const isProp881Resolved = resolvedProposals.includes("prop-881");
 
   const handleApproveProp881 = () => {
-    if (prop881Status !== 'Active') return;
-    setProp881Status('Resolved');
+    if (isProp881Resolved) return;
     if (onMintUSDG) {
-      onMintUSDG();
+      onMintUSDG("prop-881");
     }
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in duration-500">
+    <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in duration-500 h-full overflow-y-auto pb-32 scrollbar-none">
       <h1 className="text-2xl font-black tracking-[0.25em] mb-2 text-[#39FF14] uppercase w-full border-b-2 border-[#39FF14]/30 pb-4">
         DAO CONSENSUS
       </h1>
@@ -43,7 +43,7 @@ export default function DaoTerminal({ onMintUSDG, npub }: DaoTerminalProps) {
         <div className="w-full bg-black border-2 border-zinc-800 p-4 relative group text-left shadow-[0_0_20px_rgba(0,0,0,0.5)]">
            <div className="flex justify-between items-center mb-2">
              <div className="text-xs text-zinc-500 font-mono tracking-widest uppercase">Prop-881</div>
-             {prop881Status === 'Active' ? (
+             {!isProp881Resolved ? (
                <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 uppercase tracking-wider">Active</div>
              ) : (
                <div className="text-[10px] text-[#39FF14] font-bold bg-[#39FF14]/10 px-2 py-0.5 uppercase tracking-wider">Resolved - 50 USDG MINTED</div>
@@ -61,7 +61,7 @@ export default function DaoTerminal({ onMintUSDG, npub }: DaoTerminalProps) {
              <div><span className="text-zinc-500">MINT ALG:</span> BASE(10) * SPECIES(5.0) = 50 USDG</div>
            </div>
            
-           {prop881Status === 'Active' ? (
+           {!isProp881Resolved ? (
              <div className="flex flex-col gap-4">
                <div>
                  <div className="text-[10px] font-bold text-amber-500/80 mb-1 uppercase tracking-widest text-center">

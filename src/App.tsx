@@ -15,6 +15,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'DAO' | 'ME'>('SCAN');
   const [usdgBalance, setUsdgBalance] = useState<number>(0.00);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [resolvedProposals, setResolvedProposals] = useState<string[]>([]);
 
   useEffect(() => {
     const loadIdentity = () => {
@@ -136,10 +137,13 @@ export default function App() {
         )}
 
         {activeTab === 'DAO' && (
-          <DaoTerminal npub={npub} onMintUSDG={() => {
-            setUsdgBalance(prev => prev + 50);
-            setToastMessage("[ CONSENSUS REACHED. 50 USDG MINTED TO RGB VAULT. ]");
-            setTimeout(() => setToastMessage(null), 3000);
+          <DaoTerminal npub={npub} resolvedProposals={resolvedProposals} onMintUSDG={(propId) => {
+            if (!resolvedProposals.includes(propId)) {
+              setUsdgBalance(prev => prev + 50);
+              setResolvedProposals(prev => [...prev, propId]);
+              setToastMessage("[ CONSENSUS REACHED. 50 USDG MINTED TO RGB VAULT. ]");
+              setTimeout(() => setToastMessage(null), 3000);
+            }
           }} />
         )}
 
