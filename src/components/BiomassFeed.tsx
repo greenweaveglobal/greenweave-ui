@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Zap, Heart, MessageSquare } from "lucide-react";
 import { SimplePool, nip19, getPublicKey } from "nostr-tools";
-import ZapModal from "./ZapModal";
 
 interface LivePost {
   id: string;
@@ -28,7 +27,6 @@ function getRelativeTime(timestamp: number) {
 }
 
 export default function BiomassFeed() {
-  const [activeZapTarget, setActiveZapTarget] = useState<string | null>(null);
   const [feedPosts, setFeedPosts] = useState<LivePost[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -131,12 +129,6 @@ export default function BiomassFeed() {
           ))}
         </div>
       </div>
-
-      <ZapModal 
-        isOpen={!!activeZapTarget} 
-        onClose={() => setActiveZapTarget(null)} 
-        targetName={activeZapTarget || ""}
-      />
     </div>
   );
 }

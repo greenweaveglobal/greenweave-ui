@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import ZapModal from "./ZapModal";
 import { Zap } from "lucide-react";
 import { SimplePool, nip19, getPublicKey } from "nostr-tools";
 
@@ -25,6 +24,7 @@ export default function ProfileDashboard({
   const [hasNodeKey, setHasNodeKey] = useState(false);
   const [profile, setProfile] = useState<{ name?: string, display_name?: string, picture?: string } | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fetchProfileData = async () => {
     if (!isIdentityConnected) return;
@@ -129,8 +129,6 @@ export default function ProfileDashboard({
     localStorage.removeItem('greenweave_nsec');
     setHasNodeKey(false);
   };
-
-  const [isZapModalOpen, setIsZapModalOpen] = useState(false);
 
   if (!isIdentityConnected) {
     return (
@@ -315,9 +313,20 @@ export default function ProfileDashboard({
       </div>
 
       {/* Zap Button */}
-      <div className="w-full mb-10">
+      <div className="w-full mb-10 relative">
+        {toastMessage && (
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-2 font-bold uppercase tracking-widest text-[10px] z-50 rounded shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-in slide-in-from-bottom-2">
+            {toastMessage}
+          </div>
+        )}
         <button 
-          onClick={() => setIsZapModalOpen(true)}
+          onClick={() => {
+            setToastMessage("INITIATING LIGHTNING LINK...");
+            setTimeout(() => {
+              window.location.href = "lightning:playfulwaterfall533492@getalby.com";
+              setTimeout(() => setToastMessage(null), 2000);
+            }, 800);
+          }}
           className="w-full py-5 bg-yellow-500 text-black font-black text-sm uppercase tracking-[0.25em] transition-all active:scale-95 shadow-[0_0_20px_rgba(234,179,8,0.3)] flex items-center justify-center gap-3 border-2 border-yellow-400 group"
         >
           <Zap size={20} fill="black" className="group-hover:animate-pulse" />
@@ -338,12 +347,6 @@ export default function ProfileDashboard({
       <div className="text-[10px] font-bold text-amber-500/40 mb-4 uppercase tracking-widest text-center w-full">
         v0.9.1.5-SECURE
       </div>
-
-      <ZapModal 
-        isOpen={isZapModalOpen} 
-        onClose={() => setIsZapModalOpen(false)} 
-        targetName="GreenWeave Genesis Node"
-      />
     </div>
   );
 }
