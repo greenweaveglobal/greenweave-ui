@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { GoogleGenAI, Type } from "@google/genai";
-import { Relay } from "nostr-tools";
+import { Relay, nip19, finalizeEvent } from "nostr-tools";
 
 type ScannerStatus = "SCANNING" | "ANALYZING" | "RESULT";
 
@@ -210,19 +210,30 @@ export default function Scanner({ onAddLog }: ScannerProps) {
     };
 
     try {
-      // 2. Request Signature via NIP-07
-      if (!(window as any).nostr) {
-        throw new Error("NOSTR SIGNER (NIP-07) NOT DETECTED");
+      // 2. Fetch Node Private Key
+      const nodeKey = localStorage.getItem('greenweave_nsec');
+      if (!nodeKey) {
+        throw new Error("NODE KEY NOT FOUND. PLEASE SET IN PROFILE.");
       }
 
-      addLog("[TRANSMITTING TO CRYPTO-SIGNER...]");
-      // Defensive handling for signEvent to prevent state crash on mobile popup block
+      let secretKeyBytes: Uint8Array;
+      if (nodeKey.startsWith('nsec1')) {
+        const decoded = nip19.decode(nodeKey);
+        if (decoded.type !== 'nsec') throw new Error("INVALID NSEC PAYLOAD");
+        secretKeyBytes = decoded.data as Uint8Array;
+      } else {
+        // Assume hex string
+        if (nodeKey.length !== 64) throw new Error("INVALID HEX KEY LENGTH");
+        secretKeyBytes = new Uint8Array(nodeKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+      }
+
+      addLog("[SIGNING EVENT LOCALLY...]");
       let signedEvent;
       try {
-        signedEvent = await (window as any).nostr.signEvent(eventTemplate);
+        signedEvent = finalizeEvent(eventTemplate, secretKeyBytes);
       } catch (signErr: any) {
         console.error("Signature attempt failed:", signErr);
-        throw new Error(signErr.message || "SIGNATURE_REJECTED_OR_BLOCKED");
+        throw new Error("LOCAL_SIGNATURE_FAILED");
       }
       
       addLog("[SIGNATURE VERIFIED]");
@@ -264,13 +275,7 @@ export default function Scanner({ onAddLog }: ScannerProps) {
       setSignatureError(true);
       setIsProcessing(false);
       
-      // Prompt user about bunker / popup issues
-      const isPopupError = err.message.includes("blocked") || err.message.includes("popup");
-      const errorMsg = isPopupError 
-        ? "POPUP BLOCKED: Please enable popups for this site or open your nsec.app tab."
-        : "Bunker connection failed or timed out. Please ensure your key storage app (e.g., nsec.app) is open and wake it up, then try again.";
-      
-      alert(`WARNING: ${errorMsg}`);
+      alert(`WARNING: ${err.message}`);
       
       // Revert button status after 3 seconds to allow RETRY
       setTimeout(() => {

@@ -20,10 +20,17 @@ export default function ProfileDashboard({
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
 
+  const [nodeKeyInput, setNodeKeyInput] = useState("");
+  const [hasNodeKey, setHasNodeKey] = useState(false);
+
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) {
       setHasApiKey(true);
+    }
+    const savedNodeKey = localStorage.getItem('greenweave_nsec');
+    if (savedNodeKey) {
+      setHasNodeKey(true);
     }
   }, []);
 
@@ -38,6 +45,19 @@ export default function ProfileDashboard({
   const handleClearKey = () => {
     localStorage.removeItem('gemini_api_key');
     setHasApiKey(false);
+  };
+
+  const handleSaveNodeKey = () => {
+    if (nodeKeyInput.trim()) {
+      localStorage.setItem('greenweave_nsec', nodeKeyInput.trim());
+      setHasNodeKey(true);
+      setNodeKeyInput("");
+    }
+  };
+
+  const handleClearNodeKey = () => {
+    localStorage.removeItem('greenweave_nsec');
+    setHasNodeKey(false);
   };
 
   const [isZapModalOpen, setIsZapModalOpen] = useState(false);
@@ -56,14 +76,27 @@ export default function ProfileDashboard({
           </p>
         </div>
 
-        <button 
-          onClick={onConnect}
-          className="w-full py-5 mb-8 relative group overflow-hidden border-2 border-amber-400 bg-amber-500/20 hover:bg-amber-400 transition-all duration-300 shadow-[0_0_25px_rgba(245,158,11,0.2)] cursor-pointer backdrop-blur-sm"
-        >
-           <span className="relative z-10 text-base font-black uppercase tracking-[0.2em] text-amber-400 group-hover:text-black transition-colors">
-             [ UNLOCK IDENTITY ]
-           </span>
-        </button>
+        <div className="w-full mb-8 flex flex-col gap-3">
+          <div className="text-xs font-bold text-amber-500/80 mb-3 uppercase tracking-widest text-left">
+            [ INITIALIZE NODE ]
+          </div>
+          <input 
+            type="password"
+            placeholder="ENTER NODE KEY (NSEC/HEX)"
+            className="w-full bg-black border-2 border-amber-500/30 p-4 text-white font-mono text-sm focus:border-amber-400 outline-none transition-all placeholder:text-amber-900"
+            value={nodeKeyInput}
+            onChange={(e) => setNodeKeyInput(e.target.value)}
+          />
+          <button 
+            onClick={handleSaveNodeKey}
+            className="w-full py-5 relative group overflow-hidden border-2 border-amber-400 bg-amber-500/20 hover:bg-amber-400 transition-all duration-300 shadow-[0_0_25px_rgba(245,158,11,0.2)] cursor-pointer backdrop-blur-sm"
+          >
+             <span className="relative z-10 text-base font-black uppercase tracking-[0.2em] text-amber-400 group-hover:text-black transition-colors">
+               [ UNLOCK IDENTITY ]
+             </span>
+          </button>
+        </div>
+        
         <div className="text-sm font-bold tracking-widest text-white uppercase leading-relaxed max-w-[240px] mx-auto">
           Connect to manage your <span className="text-amber-400">biomass assets</span>.
         </div>
@@ -101,7 +134,7 @@ export default function ProfileDashboard({
       </div>
       
       {/* Quantum Core Settings */}
-      <div className="w-full mb-10">
+      <div className="w-full mb-6">
         <div className="text-xs font-bold text-amber-500/80 mb-3 uppercase tracking-widest">
           [ QUANTUM CORE: GEMINI API KEY ]
         </div>
@@ -132,6 +165,43 @@ export default function ProfileDashboard({
               className="w-full py-3 bg-amber-500 text-black font-black text-xs uppercase tracking-widest hover:bg-amber-400 transition-all active:scale-95"
             >
               SAVE KEY
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Node Private Key Settings */}
+      <div className="w-full mb-10">
+        <div className="text-xs font-bold text-amber-500/80 mb-3 uppercase tracking-widest">
+          [ NODE PRIVATE KEY (NSEC/HEX) ]
+        </div>
+        
+        {hasNodeKey ? (
+          <div className="bg-zinc-900 border-2 border-[#39FF14]/30 p-4 flex flex-col gap-3 shadow-lg">
+            <div className="text-sm font-black text-[#39FF14] uppercase tracking-widest">
+              [ NODE KEY: SECURED ]
+            </div>
+            <button 
+              onClick={handleClearNodeKey}
+              className="text-[10px] font-black text-red-500 uppercase tracking-widest border border-red-500/30 py-2 hover:bg-red-500 hover:text-white transition-all"
+            >
+              [ CLEAR NODE KEY ]
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <input 
+              type="password"
+              placeholder="ENTER NSEC OR HEX"
+              className="w-full bg-black border-2 border-amber-500/30 p-4 text-white font-mono text-sm focus:border-amber-400 outline-none transition-all placeholder:text-amber-900"
+              value={nodeKeyInput}
+              onChange={(e) => setNodeKeyInput(e.target.value)}
+            />
+            <button 
+              onClick={handleSaveNodeKey}
+              className="w-full py-3 bg-amber-500 text-black font-black text-xs uppercase tracking-widest hover:bg-amber-400 transition-all active:scale-95"
+            >
+              SAVE NODE KEY
             </button>
           </div>
         )}

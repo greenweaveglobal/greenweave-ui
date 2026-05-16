@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import Scanner from "./components/Scanner";
 import ProfileDashboard from "./components/ProfileDashboard";
 import BiomassFeed from "./components/BiomassFeed";
-import { nip19 } from "nostr-tools";
-import { logout } from "nostr-login";
+import { nip19, getPublicKey } from "nostr-tools";
 
 export default function App() {
   const [showEve, setShowEve] = useState(false);
@@ -14,25 +13,37 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'HOME' | 'MAP' | 'FEED' | 'ME'>('HOME');
 
   useEffect(() => {
-    const handleAuth = (e: any) => {
-      if (e.detail.type === 'login' || e.detail.type === 'signup') {
-        const hex = e.detail.pubkey;
-        setPubkey(hex);
+    const loadIdentity = () => {
+      const nodeKey = localStorage.getItem('greenweave_nsec');
+      if (nodeKey) {
         try {
-          const encoded = nip19.npubEncode(hex);
-          setNpub(encoded);
-        } catch (err) {
-          console.error("Npub encoding failed", err);
+          let secretKeyBytes: Uint8Array;
+          if (nodeKey.startsWith('nsec1')) {
+            const decoded = nip19.decode(nodeKey);
+            if (decoded.type !== 'nsec') throw new Error("Invalid NSEC");
+            secretKeyBytes = decoded.data as Uint8Array;
+          } else {
+            secretKeyBytes = new Uint8Array(nodeKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+          }
+          const hexPubkey = getPublicKey(secretKeyBytes);
+          setPubkey(hexPubkey);
+          setNpub(nip19.npubEncode(hexPubkey));
+          setIsIdentityConnected(true);
+        } catch (e) {
+          console.error("Failed to derive identity from node key", e);
+          setIsIdentityConnected(false);
         }
-        setIsIdentityConnected(true);
-      } else if (e.detail.type === 'logout') {
+      } else {
+        setIsIdentityConnected(false);
         setPubkey(null);
         setNpub(null);
-        setIsIdentityConnected(false);
       }
     };
-    document.addEventListener('nlAuth', handleAuth);
-    return () => document.removeEventListener('nlAuth', handleAuth);
+
+    loadIdentity();
+    // Poll for changes or use a custom event if navigating
+    const interval = setInterval(loadIdentity, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleTranscend = () => {
@@ -43,11 +54,15 @@ export default function App() {
   };
 
   const handleConnect = () => {
-    document.dispatchEvent(new CustomEvent('nlLaunch', { detail: 'welcome' }));
+    // If not connected, prompt the user to go to the ME tab
+    setActiveTab('ME');
   };
 
   const handleLogout = () => {
-    logout();
+    localStorage.removeItem('greenweave_nsec');
+    setPubkey(null);
+    setNpub(null);
+    setIsIdentityConnected(false);
   };
 
   if (showEve) {
