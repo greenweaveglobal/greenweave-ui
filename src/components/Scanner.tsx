@@ -203,27 +203,31 @@ export default function Scanner({ onAddLog, onClose }: ScannerProps) {
       const blob = await new Promise<Blob | null>((res) => canvasRef.current!.toBlob(res, "image/jpeg", 0.8));
       if (blob) {
         try {
-          const formData = new FormData();
-          formData.append("fileToUpload", blob, "biomass_proof.jpg"); // nostr.build uses fileToUpload
-          formData.append("file", blob, "biomass_proof.jpg"); // fallback key
-          
-          const uploadRes = await fetch("https://nostr.build/api/v2/upload/files", {
+          const uploadRes = await fetch("https://void.cat/upload", {
             method: "POST",
-            body: formData,
+            body: blob,
+            headers: {
+              "V-Content-Type": blob.type
+            }
           });
           
           if (uploadRes.ok) {
             const data = await uploadRes.json();
-            if (data?.data?.[0]?.url) {
-              mediaUrl = "\n\n" + data.data[0].url;
+            if (data?.file?.id) {
+              mediaUrl = "\n\nhttps://void.cat/d/" + data.file.id;
               addLog("[ VISUAL PROOF UPLOADED ]");
+            } else {
+              addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
+              alert("Visual Proof Upload Failed. Broadcasting text only.");
             }
           } else {
-             addLog("WARNING: Image upload endpoint rejected payload.");
+             addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
+             alert("Visual Proof Upload Failed. Broadcasting text only.");
           }
         } catch (e) {
           console.error("Media upload failed", e);
-          addLog("WARNING: Image upload failed, proceeding with text only.");
+          addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
+          alert("Visual Proof Upload Failed. Broadcasting text only.");
         }
       }
     }
