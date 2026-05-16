@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { GoogleGenAI, Type } from "@google/genai";
-import { Relay, nip19, finalizeEvent } from "nostr-tools";
+import { Relay, nip19, finalizeEvent, getPublicKey } from "nostr-tools";
 
 type ScannerStatus = "SCANNING" | "ANALYZING" | "RESULT";
 
@@ -235,8 +235,39 @@ export default function Scanner({ onAddLog, onClose }: ScannerProps) {
     setBroadcastPhase('ETCHING');
 
     // 1. Construct the Note Content
-    const dispConfidence = (analysisResult.confidence * 100).toFixed(1) + '%';
-    const content = `Biomass Genesis Scan initiated.\nTarget: ${analysisResult.species}\nStatus: Living Asset Confirmed. 🌱⚡️\nConfidence: ${dispConfidence}\n\n${analysisResult.description}${mediaUrl}`;
+    let pubkeyHex = "unknown";
+    try {
+      const nodeKey = localStorage.getItem('greenweave_nsec');
+      if (nodeKey) {
+        if (nodeKey.startsWith('nsec1')) {
+          const decoded = nip19.decode(nodeKey);
+          pubkeyHex = getPublicKey(decoded.data as Uint8Array);
+        } else {
+          pubkeyHex = getPublicKey(new Uint8Array(nodeKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not extract pubkey for payload", e);
+    }
+
+    const payloadObj = {
+      eventId: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+      pubkey: pubkeyHex,
+      timestamp: Date.now(),
+      telemetry: {
+        species_hash: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+        confidence_score: analysisResult.confidence,
+        biomass_volume_est: parseFloat((Math.random() * 10 + 2).toFixed(2)),
+        visual_spectral_hash: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')
+      },
+      spatial_zkp: {
+        region_geohash_blurred: "w3g",
+        validity_proof: "0x04bf9a...[ZK-SNARK-MOCK]",
+      },
+      status: "PENDING_CONSENSUS"
+    };
+
+    const content = JSON.stringify(payloadObj, null, 2) + `\n\n${mediaUrl}`;
     
     const eventTemplate = {
       kind: 1,

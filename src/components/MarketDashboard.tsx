@@ -124,9 +124,13 @@ export default function MarketDashboard({ onSwap }: MarketDashboardProps) {
         </div>
 
         {/* ACTIVE BOUNTIES */}
-        <div className="flex justify-center mt-8 mb-4">
+        <div className="flex justify-center mt-8 mb-4 flex-col items-center gap-2">
           <div className="text-[10px] tracking-[0.3em] font-bold text-[#39FF14] uppercase border border-[#39FF14] px-4 py-1">
             [ ACTIVE BOUNTIES ]
+          </div>
+          <div className="text-[8px] text-zinc-400 font-bold tracking-widest uppercase text-center mt-2">
+            ESG FUNDS ARE PURCHASING:<br/>
+            <span className="text-cyan-400">[ BATCH DECRYPTION KEYS FOR QUANTUM-READY MRV TELEMETRY ]</span>
           </div>
         </div>
 
