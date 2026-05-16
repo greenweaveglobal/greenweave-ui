@@ -30,6 +30,27 @@ function getRelativeTime(timestamp: number) {
 export default function BiomassFeed() {
   const [activeZapTarget, setActiveZapTarget] = useState<string | null>(null);
   const [feedPosts, setFeedPosts] = useState<LivePost[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleZap = async () => {
+    setToastMessage("INITIATING LIGHTNING PROTOCOL...");
+    
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.webln) {
+      try {
+        // @ts-ignore
+        await window.webln.enable();
+        // Since we don't have PR readily, we stick to the deep link as fallback
+      } catch (e) {
+        console.warn("WebLN enable failed", e);
+      }
+    }
+
+    setTimeout(() => {
+      window.location.href = "lightning:playfulwaterfall533492@getalby.com";
+      setTimeout(() => setToastMessage(null), 2000);
+    }, 1000);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -82,7 +103,12 @@ export default function BiomassFeed() {
         LIVE BIOMASS STREAM: LAYER 0 - VERIFIED
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-48 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-4 pb-48 scrollbar-hide relative">
+        {toastMessage && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-6 py-3 font-bold uppercase tracking-widest text-xs z-50 rounded shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-in slide-in-from-top-4">
+            {toastMessage}
+          </div>
+        )}
         <div className="flex flex-col gap-10">
           {feedPosts.length === 0 ? (
             <div className="p-10 text-center text-green-500 font-mono animate-pulse">
@@ -90,7 +116,17 @@ export default function BiomassFeed() {
             </div>
           ) : feedPosts.map((item) => (
             <div key={item.id} className="bg-zinc-950 border-2 border-amber-500/10 shadow-2xl relative group p-5">
-              <div className="text-xs text-white font-mono whitespace-pre-wrap">{item.content}</div>
+              <div className="text-xs text-white font-mono whitespace-pre-wrap mb-4">{item.content}</div>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleZap();
+                }}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded uppercase tracking-widest flex items-center justify-center gap-2 mt-4 transition-colors"
+              >
+                <Zap size={18} fill="currentColor" />
+                [ ⚡ ZAP SATS ]
+              </button>
             </div>
           ))}
         </div>
