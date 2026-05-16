@@ -31,11 +31,10 @@ export default function ProfileDashboard({
     setIsFetchingProfile(true);
     const pool = new SimplePool();
     const relays = [
-      'wss://relay.damus.io',
+      'wss://purplepag.es', 
+      'wss://relay.nostr.band',
       'wss://nos.lol',
-      'wss://relay.primal.net',
-      'wss://nostr.wine',
-      'wss://relay.snort.social'
+      'wss://relay.damus.io'
     ];
     try {
       const events = await pool.querySync(relays, {
@@ -47,8 +46,8 @@ export default function ProfileDashboard({
         events.sort((a, b) => b.created_at - a.created_at);
         try {
           if (events[0].content) {
-            const data = JSON.parse(events[0].content);
-            setProfile(data);
+            const profileData = JSON.parse(events[0].content);
+            setProfile(profileData);
           } else {
             console.warn("Profile event had empty content.");
           }
