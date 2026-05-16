@@ -25,7 +25,7 @@ export default function MarketDashboard({ onSwap }: MarketDashboardProps) {
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in duration-500 pb-32">
+    <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in duration-500 h-full overflow-y-auto pb-32 scrollbar-none">
       <h1 className="text-2xl font-black tracking-[0.25em] mb-2 text-[#39FF14] uppercase w-full border-b-2 border-[#39FF14]/30 pb-4">
         MARKET PROTOCOL
       </h1>

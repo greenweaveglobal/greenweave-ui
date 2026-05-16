@@ -3,14 +3,17 @@ import { useState } from "react";
 interface DaoTerminalProps {
   onMintUSDG?: (propId: string) => void;
   onSpendTreasury?: (propId: string) => void;
+  onDeployProposal?: (cost: number) => void;
   npub?: string | null;
   resolvedProposals: string[];
   daoTreasurySats: number;
+  usdgBalance: number;
 }
 
-export default function DaoTerminal({ onMintUSDG, onSpendTreasury, npub, resolvedProposals, daoTreasurySats }: DaoTerminalProps) {
+export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployProposal, npub, resolvedProposals, daoTreasurySats, usdgBalance }: DaoTerminalProps) {
   const isProp881Resolved = resolvedProposals.includes("prop-881");
   const isProp883Resolved = resolvedProposals.includes("prop-883");
+  const [proposalInput, setProposalInput] = useState("");
 
   const handleApproveProp881 = () => {
     if (isProp881Resolved) return;
@@ -23,6 +26,19 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, npub, resolve
     if (isProp883Resolved) return;
     if (onSpendTreasury) {
       onSpendTreasury("prop-883");
+    }
+  };
+
+  const handleDeployProposal = () => {
+    if (!proposalInput.trim()) return;
+    if (usdgBalance < 20) {
+      alert("[ ERROR: INSUFFICIENT FUNDS. 20 USDG REQUIRED TO PREVENT NETWORK SPAM. ]");
+      return;
+    }
+    if (onDeployProposal) {
+      onDeployProposal(20);
+      setProposalInput("");
+      alert("[ PROPOSAL BROADCASTED TO NOSTR RELAYS AWAITING NETWORK CONSENSUS ]");
     }
   };
 
@@ -55,6 +71,31 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, npub, resolve
           <div className="flex justify-between"><span>Eco-History:</span> <span className="text-[#39FF14]">14 Valid Scans</span></div>
           <div className="flex justify-between"><span>Trust Score:</span> <span className="text-cyan-400">Level 4</span></div>
           <div className="flex justify-between"><span>Voting Weight:</span> <span className="text-amber-500 font-bold">4.2x Multiplier</span></div>
+        </div>
+      </div>
+
+      {/* Initiate Proposal */}
+      <div className="w-full bg-zinc-950 border border-cyan-400/30 p-4 mb-8 text-left font-mono">
+        <div className="text-xs text-cyan-400 font-bold tracking-widest uppercase mb-3 border-b border-cyan-400/20 pb-2">
+          Initiate Proposal
+        </div>
+        <div className="flex flex-col gap-3">
+          <input 
+            type="text" 
+            value={proposalInput}
+            onChange={(e) => setProposalInput(e.target.value)}
+            placeholder="[ ENTER PROPOSAL COMMAND OR FUNDING REQUEST ]"
+            className="w-full bg-black border border-cyan-400/30 p-3 text-[10px] text-cyan-400 placeholder:text-cyan-400/30 font-mono focus:outline-none focus:border-cyan-400 uppercase tracking-widest"
+          />
+          <button 
+            onClick={handleDeployProposal}
+            className="w-full border-2 border-cyan-400/50 text-cyan-400 font-black text-[10px] tracking-widest py-3 hover:bg-cyan-400 hover:text-black transition-colors uppercase"
+          >
+            [ + DEPLOY PROPOSAL (-20 USDG STAKE) ]
+          </button>
+          <div className="text-[8px] text-zinc-500 text-center uppercase tracking-widest">
+            *Warning: Rejected proposals will result in 100% slashing of the 20 USDG stake to the Network Treasury.*
+          </div>
         </div>
       </div>
 

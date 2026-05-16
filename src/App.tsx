@@ -147,6 +147,7 @@ export default function App() {
             npub={npub} 
             resolvedProposals={resolvedProposals} 
             daoTreasurySats={daoTreasurySats} 
+            usdgBalance={usdgBalance}
             onMintUSDG={(propId) => {
               if (!resolvedProposals.includes(propId)) {
                 setUsdgBalance(prev => prev + 50);
@@ -167,6 +168,9 @@ export default function App() {
                   setTimeout(() => setToastMessage(null), 3000);
                 }
               }
+            }}
+            onDeployProposal={(cost) => {
+              setUsdgBalance(prev => prev - cost);
             }}
           />
         )}
