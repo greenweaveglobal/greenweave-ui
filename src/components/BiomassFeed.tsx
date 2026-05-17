@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Zap, Heart, MessageSquare } from "lucide-react";
-import { SimplePool, nip19, getPublicKey } from "nostr-tools";
+import { SimplePool, nip19 } from "nostr-tools";
+import { formatCypherpunkDate } from "../utils";
 
 interface LivePost {
   id: string;
@@ -15,15 +16,6 @@ interface LivePost {
   energyToll: number;
   image?: string;
   createdAt: number;
-}
-
-function getRelativeTime(timestamp: number) {
-  const diffMs = Date.now() - timestamp * 1000;
-  const mins = Math.max(1, Math.round(diffMs / (1000 * 60)));
-  if (mins < 60) return `${mins} MINS AGO`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} HOURS AGO`;
-  return `${Math.round(hours / 24)} DAYS AGO`;
 }
 
 interface BiomassFeedProps {
@@ -96,7 +88,7 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
           author: nip19.npubEncode(event.pubkey).substring(0, 10) + "...",
           pubkey: event.pubkey,
           createdAt: event.created_at,
-          timestamp: getRelativeTime(event.created_at),
+          timestamp: formatCypherpunkDate(event.created_at * 1000),
           content: parsedContent,
           species: "Biomass",
           confidence: "??",
@@ -171,6 +163,11 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
                  <div className="w-full h-32 overflow-hidden border border-amber-500/20 mb-4 bg-zinc-900 flex items-center justify-center">
                     <img src={item.image} alt="Visual Proof" className="object-cover w-full h-full opacity-80 hover:opacity-100 transition-opacity" />
                  </div>
+              )}
+              {payloadObj?.timestamp && (
+                <div className="text-[10px] text-cyan-400 font-mono tracking-widest mb-2 uppercase">
+                  [ TIMESTAMP: {formatCypherpunkDate(payloadObj.timestamp)} ]
+                </div>
               )}
               <div className="text-xs text-white font-mono whitespace-pre-wrap mb-4 overflow-x-auto p-2 bg-black/50 border border-zinc-800 rounded">{item.content}</div>
               <button 

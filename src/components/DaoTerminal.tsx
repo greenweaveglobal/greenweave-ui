@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatCypherpunkDate } from "../utils";
 
 interface DaoTerminalProps {
   onMintUSDG?: (propId: string) => void;
@@ -168,6 +169,12 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                <div className="text-sm text-white font-bold tracking-wide uppercase mb-3">
                  {prop.title}
                </div>
+
+               {prop.createdAt && (
+                 <div className="text-[10px] text-cyan-400 font-mono tracking-widest mb-3 uppercase">
+                   [ TIMESTAMP: {formatCypherpunkDate(prop.createdAt)} ]
+                 </div>
+               )}
                
                <div className="flex flex-col gap-1 mb-4 text-xs font-mono text-[#39FF14]/70 bg-[#39FF14]/5 p-2 border border-[#39FF14]/10">
                  <div className="truncate"><span className="text-zinc-500">TARGET:</span> {prop.target}</div>
@@ -226,6 +233,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
            
            <div className="text-sm text-white font-bold tracking-wide uppercase mb-3">
              Verify Biomass Node #442
+           </div>
+
+           <div className="text-[10px] text-cyan-400 font-mono tracking-widest mb-3 uppercase">
+             [ TIMESTAMP: {formatCypherpunkDate(Date.now() - 86400000)} ]
            </div>
            
            <div className="flex flex-col gap-1 mb-4 text-xs font-mono text-[#39FF14]/70 bg-[#39FF14]/5 p-2 border border-[#39FF14]/10">
@@ -287,6 +298,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
              <span className="text-red-500">[ PENALTY ]</span> Slash Malicious Node #431
            </div>
 
+           <div className="text-[10px] text-cyan-400 font-mono tracking-widest mb-3 uppercase">
+             [ TIMESTAMP: {formatCypherpunkDate(Date.now() - 172800000)} ]
+           </div>
+
            <div className="flex flex-col gap-1 mb-4 text-xs font-mono text-red-500/70 bg-red-500/5 p-2 border border-red-500/10">
              <div><span className="text-zinc-500">TARGET:</span> npub1spoof...</div>
              <div><span className="text-zinc-500">OFFENSE:</span> Falsified Drone Telemetry</div>
@@ -340,6 +355,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
            
            <div className="text-sm text-white font-bold tracking-wide uppercase mb-3">
              <span className="text-amber-500">[ FUNDING ]</span> Upgrade Nostr Relay Infrastructure
+           </div>
+
+           <div className="text-[10px] text-cyan-400 font-mono tracking-widest mb-3 uppercase">
+             [ TIMESTAMP: {formatCypherpunkDate(Date.now() - 259200000)} ]
            </div>
 
            <div className="flex flex-col gap-1 mb-4 text-xs font-mono text-amber-500/70 bg-amber-500/5 p-2 border border-amber-500/10">
