@@ -7,6 +7,7 @@ interface ProfileDashboardProps {
   pubkey: string | null;
   npub: string | null;
   usdgBalance: number;
+  nodeConnectionStatus: 'SYNCING' | 'CONNECTED';
   onConnect: () => void;
   onLogout: () => void;
 }
@@ -16,6 +17,7 @@ export default function ProfileDashboard({
   pubkey, 
   npub, 
   usdgBalance,
+  nodeConnectionStatus,
   onConnect, 
   onLogout 
 }: ProfileDashboardProps) {
@@ -312,7 +314,14 @@ export default function ProfileDashboard({
            </div>
            <div className="flex justify-between items-end">
              <span className="text-3xl font-black text-white tracking-wider">{usdgBalance.toFixed(2)}</span>
-             <span className="text-lg font-bold text-[#10B981] tracking-widest mb-1 flex items-center gap-2">USDG <span className="text-[10px] bg-amber-500 text-black px-1 py-0.5 font-bold">[ TESTNET ]</span></span>
+             <div className="flex flex-col items-end gap-1">
+               <span className="text-lg font-bold text-[#10B981] tracking-widest flex items-center gap-2">USDG <span className="text-[10px] bg-amber-500 text-black px-1 py-0.5 font-bold">[ TESTNET ]</span></span>
+               {nodeConnectionStatus === 'SYNCING' ? (
+                 <span className="text-[8px] font-bold text-amber-500 tracking-widest uppercase">[ NODE STATUS: SYNCING ]</span>
+               ) : (
+                 <span className="text-[8px] font-bold text-[#10B981] tracking-widest uppercase">[ NODE STATUS: CONNECTED ]</span>
+               )}
+             </div>
            </div>
            <button 
              onClick={() => navigator.clipboard.writeText("rgb:5UQmHEzz-yutdi3a-9KTHgD5-S6Lut5A-0M9DaPQ-X~PHblA")}

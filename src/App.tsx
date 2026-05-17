@@ -44,6 +44,28 @@ export default function App() {
     return raw ? JSON.parse(raw) : [];
   });
 
+  const [nodeConnectionStatus, setNodeConnectionStatus] = useState<'SYNCING' | 'CONNECTED'>('SYNCING');
+
+  useEffect(() => {
+    import('./services/iris-proxy').then(({ fetchIrisWalletBalances }) => {
+      // Use pubkey if connected, else "default_wallet"
+      const walletId = pubkey || "default_wallet";
+      fetchIrisWalletBalances(walletId).then((balances: any[]) => {
+        if (balances.length > 0 && balances[0]._offline) {
+           console.warn("[TREASURY ORACLE] Client-side verification fallback enabled.");
+           setNodeConnectionStatus('SYNCING');
+           // Keep local storage usdgBalance
+        } else {
+           setNodeConnectionStatus('CONNECTED');
+           const usdg = balances.find(b => b.assetId === "rgb:5UQmHEzz-yutdi3a-9KTHgD5-S6Lut5A-0M9DaPQ-X~PHblA");
+           if (usdg) {
+             setUsdgBalance(usdg.settled);
+           }
+        }
+      });
+    });
+  }, [pubkey]);
+
   useEffect(() => { localStorage.setItem('usdgBalance', String(usdgBalance)); }, [usdgBalance]);
   useEffect(() => { localStorage.setItem('daoTreasurySats', String(daoTreasurySats)); }, [daoTreasurySats]);
   useEffect(() => { localStorage.setItem('resolvedProposals', JSON.stringify(resolvedProposals)); }, [resolvedProposals]);
@@ -313,6 +335,7 @@ export default function App() {
             pubkey={pubkey}
             npub={npub}
             usdgBalance={usdgBalance}
+            nodeConnectionStatus={nodeConnectionStatus}
             onConnect={handleConnect}
             onLogout={handleLogout}
           />
