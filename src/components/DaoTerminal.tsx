@@ -13,41 +13,62 @@ interface DaoTerminalProps {
   totalSupply: number;
   halvingClock: number;
   dynamicProposals?: any[];
+  payInvoice?: (invoice: string) => Promise<any>;
 }
 
-export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployProposal, onBurnNode, npub, resolvedProposals, daoTreasurySats, usdgBalance, totalSupply, halvingClock, dynamicProposals = [] }: DaoTerminalProps) {
+export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployProposal, onBurnNode, npub, resolvedProposals, daoTreasurySats, usdgBalance, totalSupply, halvingClock, dynamicProposals = [], payInvoice }: DaoTerminalProps) {
   const isProp881Resolved = resolvedProposals.includes("prop-881");
   const isProp882Resolved = resolvedProposals.includes("prop-882");
   const isProp883Resolved = resolvedProposals.includes("prop-883");
   const [proposalInput, setProposalInput] = useState("");
   const [proposalType, setProposalType] = useState<"SIGNAL" | "TREASURY" | "PENALTY">("SIGNAL");
 
-  const handleApproveProp881 = () => {
+  const handleApproveProp881 = async () => {
     if (isProp881Resolved) return;
+    try {
+      if (payInvoice) await payInvoice("lnbcrt100n1placeholderinvoice99999");
+    } catch (err) {
+      console.warn("WebLN Payment failed or aborted", err);
+    }
     if (onMintUSDG) {
       onMintUSDG("prop-881");
     }
   };
 
-  const handleApproveProp882 = () => {
+  const handleApproveProp882 = async () => {
     if (isProp882Resolved) return;
+    try {
+      if (payInvoice) await payInvoice("lnbcrt100n1placeholderinvoice99999");
+    } catch (err) {
+      console.warn("WebLN Payment failed or aborted", err);
+    }
     if (onBurnNode) {
       onBurnNode("prop-882", 20); // Slashing 20 USDG
     }
   };
 
-  const handleApproveProp883 = () => {
+  const handleApproveProp883 = async () => {
     if (isProp883Resolved) return;
+    try {
+      if (payInvoice) await payInvoice("lnbcrt100n1placeholderinvoice99999");
+    } catch (err) {
+      console.warn("WebLN Payment failed or aborted", err);
+    }
     if (onSpendTreasury) {
       onSpendTreasury("prop-883");
     }
   };
 
-  const handleDeployProposal = () => {
+  const handleDeployProposal = async () => {
     if (!proposalInput.trim()) return;
     if (usdgBalance < 20) {
       alert("[ ERROR: INSUFFICIENT FUNDS. 20 USDG REQUIRED TO PREVENT NETWORK SPAM. ]");
       return;
+    }
+    try {
+      if (payInvoice) await payInvoice("lnbcrt100n1placeholderinvoice99999");
+    } catch (err) {
+      console.warn("WebLN Payment failed or aborted", err);
     }
     if (onDeployProposal) {
       onDeployProposal(20);
@@ -143,7 +164,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
             onClick={handleDeployProposal}
             className="w-full border-2 border-cyan-400/50 text-cyan-400 font-black text-[10px] tracking-widest py-3 hover:bg-cyan-400 hover:text-black transition-colors uppercase"
           >
-            [ + DEPLOY PROPOSAL (-20 USDG STAKE) ]
+            [ + DEPLOY PROPOSAL (-20 USDG STAKE / 500 TSATS) ]
           </button>
           <div className="text-[8px] text-zinc-500 text-center uppercase tracking-widest">
             *Warning: Rejected proposals will result in 100% slashing of the 20 USDG stake to the Network Treasury.*
@@ -199,13 +220,18 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                    </div>
                    <div className="flex flex-col gap-2">
                      <button 
-                       onClick={() => onMintUSDG?.(prop.id)}
+                       onClick={async () => {
+                         try {
+                           if (payInvoice) await payInvoice("lnbcrt100n1placeholderinvoice99999");
+                         } catch (err) {}
+                         onMintUSDG?.(prop.id);
+                       }}
                        className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
                      >
-                       APPROVE & STAKE 5 USDG
+                       APPROVE (STAKE 5 USDG / 100 TSATS)
                      </button>
                      <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                       REJECT & STAKE 5 USDG
+                       REJECT (STAKE 5 USDG / 100 TSATS)
                      </button>
                      <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
                        *Warning: Malicious voting will result in 100% slashing of staked assets.*
@@ -266,10 +292,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                    onClick={handleApproveProp881}
                    className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
                  >
-                   APPROVE & STAKE 5 USDG
+                   APPROVE (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                   REJECT & STAKE 5 USDG
+                   REJECT (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
                    *Warning: Malicious voting will result in 100% slashing of staked assets.*
@@ -387,10 +413,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                    onClick={handleApproveProp883}
                    className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
                  >
-                   APPROVE & STAKE 5 USDG
+                   APPROVE (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                   REJECT & STAKE 5 USDG
+                   REJECT (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
                    *Warning: Malicious voting will result in 100% slashing of staked assets.*

@@ -5,6 +5,7 @@ import BiomassFeed from "./components/BiomassFeed";
 import MarketDashboard from "./components/MarketDashboard";
 import DaoTerminal from "./components/DaoTerminal";
 import { nip19, getPublicKey } from "nostr-tools";
+import { useWebLN } from "./hooks/useWebLN";
 
 export default function App() {
   const [showEve, setShowEve] = useState(false);
@@ -13,6 +14,8 @@ export default function App() {
   const [npub, setNpub] = useState<string | null>(null);
   const [isIdentityConnected, setIsIdentityConnected] = useState(false);
   const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'DAO' | 'ME'>('SCAN');
+  
+  const { isConnected: isLightningConnected, payInvoice } = useWebLN();
   const [usdgBalance, setUsdgBalance] = useState<number>(() => {
     return Number(localStorage.getItem('usdgBalance')) || 0.00;
   });
@@ -196,7 +199,9 @@ export default function App() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-black to-black opacity-50 pointer-events-none" />
 
       {/* Network Status tag */}
-      {import.meta.env.DEV && (
+      {
+// @ts-ignore        
+        import.meta.env.DEV && (
         <div className="absolute top-2 right-4 z-40 text-[10px] text-amber-500 font-bold uppercase tracking-widest hidden sm:block">
           [ NETWORK: RGB_SIMULATOR (LOCAL_NODE) ]
         </div>
@@ -246,7 +251,9 @@ export default function App() {
         )}
 
         {activeTab === 'MARKET' && (
-          <MarketDashboard onSwap={(sats, usdg) => {
+          <MarketDashboard 
+            payInvoice={payInvoice}
+            onSwap={(sats, usdg) => {
             setDaoTreasurySats(prev => prev + sats);
             setUsdgBalance(prev => prev + usdg);
             setToastMessage(`[ SWAP SUCCESS: +${usdg.toFixed(2)} USDG | +${sats} SATS TO TREASURY ]`);
@@ -256,6 +263,7 @@ export default function App() {
 
         {activeTab === 'DAO' && (
           <DaoTerminal 
+            payInvoice={payInvoice}
             npub={npub} 
             resolvedProposals={resolvedProposals} 
             daoTreasurySats={daoTreasurySats} 
@@ -336,6 +344,7 @@ export default function App() {
             npub={npub}
             usdgBalance={usdgBalance}
             nodeConnectionStatus={nodeConnectionStatus}
+            isLightningConnected={isLightningConnected}
             onConnect={handleConnect}
             onLogout={handleLogout}
           />

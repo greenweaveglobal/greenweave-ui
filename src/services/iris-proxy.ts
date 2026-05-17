@@ -1,3 +1,4 @@
+// @ts-ignore
 const IRIS_PROXY_URL = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_IRIS_PROXY_URL ? import.meta.env.VITE_IRIS_PROXY_URL : "http://localhost:3000/api/v1";
 const ACTUAL_USDG_ASSET_ID = "rgb:5UQmHEzz-yutdi3a-9KTHgD5-S6Lut5A-0M9DaPQ-X~PHblA";
 

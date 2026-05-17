@@ -8,6 +8,7 @@ interface ProfileDashboardProps {
   npub: string | null;
   usdgBalance: number;
   nodeConnectionStatus: 'SYNCING' | 'CONNECTED';
+  isLightningConnected: boolean;
   onConnect: () => void;
   onLogout: () => void;
 }
@@ -18,6 +19,7 @@ export default function ProfileDashboard({
   npub, 
   usdgBalance,
   nodeConnectionStatus,
+  isLightningConnected,
   onConnect, 
   onLogout 
 }: ProfileDashboardProps) {
@@ -320,6 +322,11 @@ export default function ProfileDashboard({
                  <span className="text-[8px] font-bold text-amber-500 tracking-widest uppercase">[ NODE STATUS: SYNCING ]</span>
                ) : (
                  <span className="text-[8px] font-bold text-[#10B981] tracking-widest uppercase">[ NODE STATUS: CONNECTED ]</span>
+               )}
+               {isLightningConnected ? (
+                 <span className="text-[8px] font-bold text-[#10B981] tracking-widest uppercase">[ LIGHTNING: WEBLN SECURED ]</span>
+               ) : (
+                 <span className="text-[8px] font-bold text-red-500 tracking-widest uppercase">[ LIGHTNING: DISCONNECTED ]</span>
                )}
              </div>
            </div>
