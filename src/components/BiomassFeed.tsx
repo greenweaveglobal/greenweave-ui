@@ -36,6 +36,7 @@ interface BiomassFeedProps {
 export default function BiomassFeed({ localPosts = [], submittedEventIds = [], onAddProposal, onNavigateToDao }: BiomassFeedProps) {
   const [feedPosts, setFeedPosts] = useState<LivePost[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleZap = async () => {
     setToastMessage("INITIATING LIGHTNING PROTOCOL...");
@@ -62,6 +63,11 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
     const pool = new SimplePool();
     const relays = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net'];
     
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 5000);
+
     const sub = pool.subscribeMany(relays, [
       {
         kinds: [1],
@@ -71,28 +77,55 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
     ], {
       onevent(event) {
         if (!isMounted) return;
+        setIsLoading(false);
+
+        let parsedContent = event.content;
+        let visualProofUrl = "";
+
+        try {
+          const jsonEndIndex = event.content.lastIndexOf('}');
+          if (jsonEndIndex !== -1) {
+            const cleanJsonString = event.content.substring(0, jsonEndIndex + 1);
+            const payload = JSON.parse(cleanJsonString);
+            
+            const trailingUrlMatch = event.content.match(/https?:\/\/[^\s]+/);
+            if (trailingUrlMatch) {
+              visualProofUrl = trailingUrlMatch[0];
+            }
+            // Pretty print the JSON for display
+            parsedContent = JSON.stringify(payload, null, 2);
+          }
+        } catch (error) {
+           // Fallback to raw content
+        }
+
         const newPost = {
           id: event.id,
           author: nip19.npubEncode(event.pubkey).substring(0, 10) + "...",
           pubkey: event.pubkey,
           createdAt: event.created_at,
           timestamp: getRelativeTime(event.created_at),
-          content: event.content,
+          content: parsedContent,
           species: "Biomass",
           confidence: "??",
           description: "",
           location: "",
-          energyToll: 0
+          energyToll: 0,
+          image: visualProofUrl
         };
         setFeedPosts(prev => {
           if (prev.some(p => p.id === newPost.id)) return prev;
           return [...prev, newPost].sort((a, b) => b.createdAt - a.createdAt);
         });
+      },
+      oneose() {
+         if (isMounted) setIsLoading(false);
       }
     });
 
     return () => {
       isMounted = false;
+      clearTimeout(timeout);
       sub.close();
       pool.close(relays);
     };
@@ -114,21 +147,34 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
           </div>
         )}
         <div className="flex flex-col gap-10">
-          {allPosts.length === 0 ? (
+          {isLoading ? (
             <div className="p-10 text-center text-green-500 font-mono animate-pulse">
               [ SCANNING NOSTR RELAYS FOR BIOMASS DATA... ]
+            </div>
+          ) : allPosts.length === 0 ? (
+            <div className="p-10 text-center text-zinc-500 font-mono">
+              [ NO NETWORK ACTIVITY YET ]
             </div>
           ) : allPosts.map((item) => {
             let payloadObj = null;
             try {
-              payloadObj = JSON.parse(item.content.split('\n\n')[0]);
-            } catch (e) {}
+              payloadObj = JSON.parse(item.content);
+            } catch (e) {
+              try {
+                 payloadObj = JSON.parse(item.content.split('\n\n')[0]);
+              } catch (e2) {}
+            }
 
             const isSubmitted = payloadObj && submittedEventIds.includes(payloadObj.eventId);
 
             return (
             <div key={item.id} className="bg-zinc-950 border-2 border-amber-500/10 shadow-2xl relative group p-5">
-              <div className="text-xs text-white font-mono whitespace-pre-wrap mb-4">{item.content}</div>
+              {item.image && (
+                 <div className="w-full h-32 overflow-hidden border border-amber-500/20 mb-4 bg-zinc-900 flex items-center justify-center">
+                    <img src={item.image} alt="Visual Proof" className="object-cover w-full h-full opacity-80 hover:opacity-100 transition-opacity" />
+                 </div>
+              )}
+              <div className="text-xs text-white font-mono whitespace-pre-wrap mb-4 overflow-x-auto p-2 bg-black/50 border border-zinc-800 rounded">{item.content}</div>
               <button 
                 onClick={(e) => {
                   e.preventDefault();
