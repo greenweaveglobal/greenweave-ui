@@ -28,9 +28,12 @@ function getRelativeTime(timestamp: number) {
 
 interface BiomassFeedProps {
   localPosts?: LivePost[];
+  submittedEventIds?: string[];
+  onAddProposal?: (proposal: any) => void;
+  onNavigateToDao?: () => void;
 }
 
-export default function BiomassFeed({ localPosts = [] }: BiomassFeedProps) {
+export default function BiomassFeed({ localPosts = [], submittedEventIds = [], onAddProposal, onNavigateToDao }: BiomassFeedProps) {
   const [feedPosts, setFeedPosts] = useState<LivePost[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -118,7 +121,15 @@ export default function BiomassFeed({ localPosts = [] }: BiomassFeedProps) {
             <div className="p-10 text-center text-green-500 font-mono animate-pulse">
               [ SCANNING NOSTR RELAYS FOR BIOMASS DATA... ]
             </div>
-          ) : allPosts.map((item) => (
+          ) : allPosts.map((item) => {
+            let payloadObj = null;
+            try {
+              payloadObj = JSON.parse(item.content.split('\n\n')[0]);
+            } catch (e) {}
+
+            const isSubmitted = payloadObj && submittedEventIds.includes(payloadObj.eventId);
+
+            return (
             <div key={item.id} className="bg-zinc-950 border-2 border-amber-500/10 shadow-2xl relative group p-5">
               <div className="text-xs text-white font-mono whitespace-pre-wrap mb-4">{item.content}</div>
               <button 
@@ -131,8 +142,40 @@ export default function BiomassFeed({ localPosts = [] }: BiomassFeedProps) {
                 <Zap size={18} fill="currentColor" />
                 [ ⚡ ZAP SATS ]
               </button>
+              {payloadObj && payloadObj.telemetry && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!isSubmitted && onAddProposal) {
+                      const newProposal = {
+                        id: payloadObj.eventId,
+                        type: "MINT", // Hard consensus required
+                        title: `[ VERIFY ] Biomass Signature ${payloadObj.eventId.substring(0, 8)}`,
+                        target: payloadObj.telemetry.species_hash,
+                        confidence: payloadObj.telemetry.confidence_score,
+                        status: "ACTIVE",
+                        timeLock: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+                        createdAt: Date.now()
+                      };
+                      onAddProposal(newProposal);
+                      if (onNavigateToDao) {
+                        onNavigateToDao();
+                      }
+                    }
+                  }}
+                  disabled={isSubmitted}
+                  className={`w-full font-bold py-3 rounded uppercase tracking-widest flex items-center justify-center mt-3 transition-colors border text-xs ${
+                    isSubmitted 
+                      ? "border-green-500/30 text-green-500/50 cursor-not-allowed"
+                      : "border-green-500 text-green-500 hover:bg-green-500/20"
+                  }`}
+                >
+                  {isSubmitted ? "[ PENDING DAO VERIFICATION ]" : "[ SUBMIT TO DAO CONSENSUS ]"}
+                </button>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

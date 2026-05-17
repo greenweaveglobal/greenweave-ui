@@ -28,6 +28,7 @@ export default function App() {
   const [halvingClock, setHalvingClock] = useState(0); // Strictly goes UP (Total historical scans)
 
   const [localPosts, setLocalPosts] = useState<any[]>([]);
+  const [dynamicProposals, setDynamicProposals] = useState<any[]>([]);
 
   // MECHANISM 2: ECOLOGICAL HALVING
   const calculateCurrentReward = (clockParams: number) => {
@@ -211,6 +212,7 @@ export default function App() {
             usdgBalance={usdgBalance}
             totalSupply={totalSupply}
             halvingClock={halvingClock}
+            dynamicProposals={dynamicProposals}
             onMintUSDG={(propId) => {
               if (!resolvedProposals.includes(propId)) {
                 const reward = executeMint();
@@ -255,7 +257,16 @@ export default function App() {
         )}
 
         {activeTab === 'FEED' && (
-          <BiomassFeed localPosts={localPosts} />
+          <BiomassFeed 
+            localPosts={localPosts} 
+            submittedEventIds={dynamicProposals.map(p => p.id)}
+            onAddProposal={(prop) => {
+              setDynamicProposals(prev => [prop, ...prev]);
+              setToastMessage("[ PAYLOAD SUBMITTED. AWAITING 66.6% NETWORK CONSENSUS. ]");
+              setTimeout(() => setToastMessage(null), 3500);
+            }}
+            onNavigateToDao={() => setActiveTab('DAO')}
+          />
         )}
 
         {activeTab === 'ME' && (
