@@ -258,33 +258,33 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
       addLog("[ UPLOADING VISUAL PROOF... ]");
       const blob = await new Promise<Blob | null>((res) => canvasRef.current!.toBlob(res, "image/jpeg", 0.8));
       if (blob) {
-        try {
-          const uploadRes = await fetch("https://void.cat/upload", {
-            method: "POST",
-            body: blob,
-            headers: {
-              "V-Content-Type": blob.type
-            }
-          });
+          const formData = new FormData();
+          formData.append("fileToUpload", blob, "image.jpg");
           
-          if (uploadRes.ok) {
-            const data = await uploadRes.json();
-            if (data?.file?.id) {
-              mediaUrl = "\n\nhttps://void.cat/d/" + data.file.id;
-              addLog("[ VISUAL PROOF UPLOADED ]");
+          try {
+            const uploadRes = await fetch("https://nostr.build/api/v2/upload/free", {
+              method: "POST",
+              body: formData,
+              headers: {
+                "Accept": "application/json"
+              }
+            });
+            
+            if (uploadRes.ok) {
+              const data = await uploadRes.json();
+              if (data?.data && data.data[0]?.url) {
+                mediaUrl = "\n\n" + data.data[0].url;
+                addLog("[ VISUAL PROOF UPLOADED ]");
+              } else {
+                addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
+              }
             } else {
-              addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
-              alert("Visual Proof Upload Failed. Broadcasting text only.");
+               addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
             }
-          } else {
-             addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
-             alert("Visual Proof Upload Failed. Broadcasting text only.");
+          } catch (e) {
+            console.error("Media upload failed", e);
+            addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
           }
-        } catch (e) {
-          console.error("Media upload failed", e);
-          addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
-          alert("Visual Proof Upload Failed. Broadcasting text only.");
-        }
       }
     }
 
