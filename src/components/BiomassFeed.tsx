@@ -58,27 +58,19 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
     }, 1000);
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchFeed = async () => {
+    setIsLoading(true);
     const pool = new SimplePool();
     const relays = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net'];
     
-    // Safety timeout
-    const timeout = setTimeout(() => {
-      if (isMounted) setIsLoading(false);
-    }, 5000);
-
-    const sub = pool.subscribeMany(relays, [
-      {
+    try {
+      const events = await pool.querySync(relays, {
         kinds: [1],
         '#t': ['GreenWeave', 'BiomassProof', 'greenweave'],
         limit: 50
-      }
-    ], {
-      onevent(event) {
-        if (!isMounted) return;
-        setIsLoading(false);
+      });
 
+      const parsedPosts = events.map(event => {
         let parsedContent = event.content;
         let visualProofUrl = "";
 
@@ -99,7 +91,7 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
            // Fallback to raw content
         }
 
-        const newPost = {
+        return {
           id: event.id,
           author: nip19.npubEncode(event.pubkey).substring(0, 10) + "...",
           pubkey: event.pubkey,
@@ -113,31 +105,37 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
           energyToll: 0,
           image: visualProofUrl
         };
-        setFeedPosts(prev => {
-          if (prev.some(p => p.id === newPost.id)) return prev;
-          return [...prev, newPost].sort((a, b) => b.createdAt - a.createdAt);
-        });
-      },
-      oneose() {
-         if (isMounted) setIsLoading(false);
-      }
-    });
+      });
 
-    return () => {
-      isMounted = false;
-      clearTimeout(timeout);
-      sub.close();
+      setFeedPosts(parsedPosts.sort((a, b) => b.createdAt - a.createdAt));
+    } catch (err) {
+      console.error("Relay fetch error:", err);
+    } finally {
+      setIsLoading(false);
       pool.close(relays);
-    };
+    }
+  };
+
+  useEffect(() => {
+    fetchFeed();
   }, []);
 
   const allPosts = [...localPosts, ...feedPosts].sort((a, b) => b.createdAt - a.createdAt);
 
   return (
     <div className="w-full max-w-sm flex-1 flex flex-col pt-4 overflow-hidden animate-in fade-in duration-500">
-      <div className="px-4 text-xs font-black text-amber-500/40 mb-6 uppercase tracking-widest flex items-center gap-2 flex-shrink-0">
-        <div className="w-2 h-2 rounded-full bg-[#39FF14] animate-pulse" />
-        LIVE BIOMASS STREAM: LAYER 0 - VERIFIED
+      <div className="px-4 flex justify-between items-center mb-6 flex-shrink-0">
+        <div className="text-xs font-black text-amber-500/40 uppercase tracking-widest flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#39FF14] animate-pulse" />
+          LAYER 0 - VERIFIED
+        </div>
+        <button 
+          onClick={fetchFeed}
+          disabled={isLoading}
+          className="text-[10px] font-mono text-zinc-400 border border-zinc-800 px-2 py-1 hover:bg-zinc-800 hover:text-white transition-colors disabled:opacity-50"
+        >
+          [ ↻ REFRESH NOSTR RELAYS ]
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-48 scrollbar-hide relative">

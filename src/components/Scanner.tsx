@@ -276,14 +276,14 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
                 mediaUrl = "\n\n" + data.data[0].url;
                 addLog("[ VISUAL PROOF UPLOADED ]");
               } else {
-                addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
+                addLog(`WARNING: Visual Proof Upload Failed (No URL). Broadcasting text only.`);
               }
             } else {
-               addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
+               addLog(`WARNING: Visual Proof Upload Failed (${uploadRes.status}). Broadcasting text only.`);
             }
-          } catch (e) {
-            console.error("Media upload failed", e);
-            addLog("WARNING: Visual Proof Upload Failed. Broadcasting text only.");
+          } catch (e: any) {
+            console.warn("NOSTR_BUILD UPLOAD FAILED (CORS/Network):", e.message || e);
+            addLog(`WARNING: Upload Error (${e.message || "Network"}). Broadcasting text only.`);
           }
       }
     }
