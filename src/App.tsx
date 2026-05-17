@@ -173,6 +173,13 @@ export default function App() {
       {/* Subtle lighting overlay */}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-black to-black opacity-50 pointer-events-none" />
 
+      {/* Network Status tag */}
+      {import.meta.env.DEV && (
+        <div className="absolute top-2 right-4 z-40 text-[10px] text-amber-500 font-bold uppercase tracking-widest hidden sm:block">
+          [ NETWORK: RGB_SIMULATOR (LOCAL_NODE) ]
+        </div>
+      )}
+
       {/* Global Toast */}
       {toastMessage && (
         <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[#39FF14] text-black px-6 py-3 font-bold uppercase tracking-widest text-[10px] sm:text-xs rounded shadow-[0_0_20px_rgba(57,255,20,0.5)] animate-in slide-in-from-top-4 fade-in duration-300 text-center w-[90%] max-w-sm">
@@ -234,16 +241,26 @@ export default function App() {
             totalSupply={totalSupply}
             halvingClock={halvingClock}
             dynamicProposals={dynamicProposals}
-            onMintUSDG={(propId) => {
+            onMintUSDG={async (propId) => {
               if (!resolvedProposals.includes(propId)) {
-                const reward = executeMint();
-                if (reward > 0) {
-                  setUsdgBalance(prev => prev + reward);
-                  setResolvedProposals(prev => [...prev, propId]);
-                  setToastMessage(`[ CONSENSUS REACHED. ${reward.toFixed(2)} USDG MINTED. ]`);
-                  setTimeout(() => setToastMessage(null), 3000);
-                } else {
-                  setToastMessage("[ ERROR: HARD CAP REACHED. CANNOT MINT. ]");
+                try {
+                  console.log("[RGB ORACLE] Initiating Client-Side Validation for USDG Transfer...");
+                  // Placeholder for real proxy connection check
+                  // if (!proxyConnected) throw new Error("RGB Node unavailable");
+
+                  const reward = executeMint();
+                  if (reward > 0) {
+                    setUsdgBalance(prev => prev + reward);
+                    setResolvedProposals(prev => [...prev, propId]);
+                    setToastMessage(`[ CONSENSUS REACHED. ${reward.toFixed(2)} USDG MINTED. ]`);
+                    setTimeout(() => setToastMessage(null), 3000);
+                  } else {
+                    setToastMessage("[ ERROR: HARD CAP REACHED. CANNOT MINT. ]");
+                    setTimeout(() => setToastMessage(null), 3000);
+                  }
+                } catch (err: any) {
+                  console.error(err);
+                  setToastMessage("[ RGB ORACLE ERROR: Validation failed ]");
                   setTimeout(() => setToastMessage(null), 3000);
                 }
               }
