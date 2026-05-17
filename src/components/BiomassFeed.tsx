@@ -26,7 +26,11 @@ function getRelativeTime(timestamp: number) {
   return `${Math.round(hours / 24)} DAYS AGO`;
 }
 
-export default function BiomassFeed() {
+interface BiomassFeedProps {
+  localPosts?: LivePost[];
+}
+
+export default function BiomassFeed({ localPosts = [] }: BiomassFeedProps) {
   const [feedPosts, setFeedPosts] = useState<LivePost[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -94,6 +98,8 @@ export default function BiomassFeed() {
     };
   }, []);
 
+  const allPosts = [...localPosts, ...feedPosts].sort((a, b) => b.createdAt - a.createdAt);
+
   return (
     <div className="w-full max-w-sm flex-1 flex flex-col pt-4 overflow-hidden animate-in fade-in duration-500">
       <div className="px-4 text-xs font-black text-amber-500/40 mb-6 uppercase tracking-widest flex items-center gap-2 flex-shrink-0">
@@ -108,11 +114,11 @@ export default function BiomassFeed() {
           </div>
         )}
         <div className="flex flex-col gap-10">
-          {feedPosts.length === 0 ? (
+          {allPosts.length === 0 ? (
             <div className="p-10 text-center text-green-500 font-mono animate-pulse">
               [ SCANNING NOSTR RELAYS FOR BIOMASS DATA... ]
             </div>
-          ) : feedPosts.map((item) => (
+          ) : allPosts.map((item) => (
             <div key={item.id} className="bg-zinc-950 border-2 border-amber-500/10 shadow-2xl relative group p-5">
               <div className="text-xs text-white font-mono whitespace-pre-wrap mb-4">{item.content}</div>
               <button 

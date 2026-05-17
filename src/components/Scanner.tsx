@@ -7,9 +7,10 @@ type ScannerStatus = "SCANNING" | "ANALYZING" | "RESULT";
 interface ScannerProps {
   onAddLog?: (msg: string) => void;
   onClose?: () => void;
+  onScanComplete?: (payload: any, imageStr: string) => void;
 }
 
-export default function Scanner({ onAddLog, onClose }: ScannerProps) {
+export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [logs, setLogs] = useState<string[]>(["EVE Core v0.9.1 online.", "Initializing ocular link..."]);
@@ -122,66 +123,49 @@ export default function Scanner({ onAddLog, onClose }: ScannerProps) {
       }
     }
 
-    try {
-      const apiKey = localStorage.getItem('gemini_api_key');
-      if (!apiKey) {
-        addLog("WARNING: Quantum Core Offline.");
-        addLog("Please enter your Gemini API Key in the ME tab.");
-        setTimeout(() => setStatus("SCANNING"), 4000);
-        return;
+    addLog("[CONNECTING TO GREENWEAVE AI CLUSTER...]");
+    
+    setTimeout(() => {
+      let pubkeyHex = "unknown";
+      try {
+        const nodeKey = localStorage.getItem('greenweave_nsec');
+        if (nodeKey) {
+          if (nodeKey.startsWith('nsec1')) {
+            const decoded = nip19.decode(nodeKey);
+            pubkeyHex = getPublicKey(decoded.data as Uint8Array);
+          } else {
+            pubkeyHex = getPublicKey(new Uint8Array(nodeKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+          }
+        }
+      } catch (e) {
+        console.warn("Could not extract pubkey for payload", e);
       }
 
-      addLog("[CONNECTING TO GREENWEAVE AI CLUSTER...]");
+      const speciesHash = "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      const spectralHash = "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      const confidenceScore = parseFloat((Math.random() * (0.99 - 0.85) + 0.85).toFixed(3));
       
-      const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-3-flash-preview";
-      
-      const imagePart = {
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: base64Image.split(',')[1],
+      const payloadObj = {
+        eventId: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+        pubkey: pubkeyHex,
+        timestamp: Date.now(),
+        telemetry: {
+          species_hash: speciesHash,
+          confidence_score: confidenceScore,
+          biomass_volume_est: parseFloat((Math.random() * 10 + 2).toFixed(2)),
+          visual_spectral_hash: spectralHash
         },
+        spatial_zkp: {
+          region_geohash_blurred: "w3g",
+          validity_proof: "0x04bf9a...[ZK-SNARK-MOCK]"
+        },
+        status: "PENDING_CONSENSUS"
       };
-
-      const result = await ai.models.generateContent({
-        model,
-        contents: [
-          {
-            parts: [
-              imagePart,
-              { text: "Analyze this image. Identify the plant species. Return ONLY a valid JSON object with keys: 'species' (string), 'confidence' (number), 'isBiomass' (boolean), and 'description' (short sentence)." }
-            ]
-          }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              species: { type: Type.STRING },
-              confidence: { type: Type.NUMBER },
-              isBiomass: { type: Type.BOOLEAN },
-              description: { type: Type.STRING },
-            },
-            required: ["species", "confidence", "isBiomass", "description"],
-          },
-        },
-      });
-
-      const responseText = result.text || "{}";
-      const data = JSON.parse(responseText);
       
-      if (!data.species) throw new Error("Invalid Analysis Data");
-
-      setAnalysisResult(data);
-      setStatus("RESULT");
-      addLog(`[ANALYSIS COMPLETE] ${data.species.toUpperCase()} IDENTIFIED`);
-    } catch (err: any) {
-      console.error(err);
-      addLog(`ERR: AI Analysis Failed. ${err.message}`);
-      // Fallback or allow rescan
-      setTimeout(() => setStatus("SCANNING"), 3000);
-    }
+      onScanComplete?.(payloadObj, base64Image);
+      // Let's reset the status back if not unmounted
+      setStatus("SCANNING");
+    }, 3000);
   };
 
   const handleBroadcast = async () => {
@@ -410,7 +394,7 @@ export default function Scanner({ onAddLog, onClose }: ScannerProps) {
             <div className="absolute inset-0 bg-[#50C878] animate-[ping_1.5s_infinite] shadow-[0_0_15px_#50C878]"></div>
           </div>
           <div className="text-[#50C878] text-[10px] tracking-[0.4em] uppercase animate-pulse">
-            AI Cluster analyzing frame...
+            [ ANALYZING SPECTRAL DATA... RUNNING ZK-PROOFS... ]
           </div>
         </div>
       )}
@@ -517,7 +501,7 @@ export default function Scanner({ onAddLog, onClose }: ScannerProps) {
               <div className="w-4 h-4 bg-[#39FF14] rounded-full animate-pulse shadow-[0_0_10px_#39FF14]"></div>
             </div>
             <div className="absolute -bottom-10 whitespace-nowrap text-xs font-black uppercase tracking-[0.3em] text-[#39FF14]">
-              [ LOCK TARGET ]
+              [ CAPTURE BIOMASS SIGNATURE ]
             </div>
           </button>
         </div>

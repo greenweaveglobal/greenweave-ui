@@ -27,6 +27,8 @@ export default function App() {
   const [totalSupply, setTotalSupply] = useState(0); // Can go UP (Mint) or DOWN (Burn)
   const [halvingClock, setHalvingClock] = useState(0); // Strictly goes UP (Total historical scans)
 
+  const [localPosts, setLocalPosts] = useState<any[]>([]);
+
   // MECHANISM 2: ECOLOGICAL HALVING
   const calculateCurrentReward = (clockParams: number) => {
     const epoch = Math.floor(clockParams / MACRO_RULES.HALVING_EPOCH);
@@ -113,11 +115,31 @@ export default function App() {
   if (showEve) {
     return (
       <div className="animate-in fade-in duration-1000 w-screen h-[100dvh] bg-black overflow-hidden relative">
-        <Scanner onClose={() => {
-          setShowEve(false);
-          setFading(false);
-          setActiveTab('SCAN'); // Return to Home dashboard
-        }} />
+        <Scanner 
+          onClose={() => {
+            setShowEve(false);
+            setFading(false);
+            setActiveTab('SCAN'); // Return to Home dashboard
+          }} 
+          onScanComplete={(payload) => {
+            setLocalPosts(prev => [{
+               id: payload.eventId,
+               author: npub ? npub.substring(0,10) + "..." : "npub1mock...",
+               pubkey: pubkey || "mockkey",
+               timestamp: "JUST NOW",
+               createdAt: Math.floor(Date.now() / 1000),
+               content: JSON.stringify(payload, null, 2),
+               species: "Biomass",
+               confidence: "??",
+               description: "",
+               location: "",
+               energyToll: 0
+            }, ...prev]);
+            setShowEve(false);
+            setFading(false);
+            setActiveTab('FEED');
+          }}
+        />
       </div>
     );
   }
@@ -233,7 +255,7 @@ export default function App() {
         )}
 
         {activeTab === 'FEED' && (
-          <BiomassFeed />
+          <BiomassFeed localPosts={localPosts} />
         )}
 
         {activeTab === 'ME' && (
