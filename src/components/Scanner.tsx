@@ -25,6 +25,8 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
     confidence: number;
     isBiomass: boolean;
     description: string;
+    payloadObj?: any;
+    base64Image?: string;
   } | null>(null);
 
   const addLog = useCallback((msg: string) => {
@@ -125,7 +127,56 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
 
     addLog("[CONNECTING TO GREENWEAVE AI CLUSTER...]");
     
-    setTimeout(() => {
+    try {
+      const apiKey = localStorage.getItem('gemini_api_key');
+      if (!apiKey) {
+        addLog("WARNING: Quantum Core Offline. Missing API Key.");
+        addLog("Please enter your Gemini API Key in the ME tab.");
+        setTimeout(() => setStatus("SCANNING"), 4000);
+        return;
+      }
+      
+      const ai = new GoogleGenAI({ apiKey });
+      const imagePart = {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64Image.split(',')[1],
+        },
+      };
+
+      const result = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            parts: [
+              imagePart,
+              { text: "Analyze this image. Identify the plant species. Estimate a confidence score (0.0 to 1.0). Return ONLY a raw JSON object with keys: 'species_name', 'confidence', 'estimated_biomass_index'." }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              species_name: { type: Type.STRING },
+              confidence: { type: Type.NUMBER },
+              estimated_biomass_index: { type: Type.NUMBER },
+            },
+            required: ["species_name", "confidence", "estimated_biomass_index"],
+          },
+        },
+      });
+
+      const responseText = result.text || "{}";
+      const data = JSON.parse(responseText);
+      
+      const speciesName = data.species_name || "Unknown Biomass";
+      const confidence = data.confidence || 0.85;
+      const biomassEst = data.estimated_biomass_index || 5.0;
+      
+      addLog(`[IDENTIFIED] ${speciesName.toUpperCase()}`);
+
       let pubkeyHex = "unknown";
       try {
         const nodeKey = localStorage.getItem('greenweave_nsec');
@@ -141,18 +192,20 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
         console.warn("Could not extract pubkey for payload", e);
       }
 
-      const speciesHash = "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      const spectralHash = "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      const confidenceScore = parseFloat((Math.random() * (0.99 - 0.85) + 0.85).toFixed(3));
-      
-      const payloadObj = {
-        eventId: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+      // Provide real species and spectral hashes
+      const speciesHashBuffer = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(speciesName));
+      const speciesHash = "0x" + Array.from(new Uint8Array(speciesHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const spectralHashBuffer = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(base64Image));
+      const spectralHash = "0x" + Array.from(new Uint8Array(spectralHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const payloadObj: any = {
         pubkey: pubkeyHex,
         timestamp: Date.now(),
         telemetry: {
           species_hash: speciesHash,
-          confidence_score: confidenceScore,
-          biomass_volume_est: parseFloat((Math.random() * 10 + 2).toFixed(2)),
+          confidence_score: confidence,
+          biomass_volume_est: biomassEst,
           visual_spectral_hash: spectralHash
         },
         spatial_zkp: {
@@ -161,11 +214,30 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
         },
         status: "PENDING_CONSENSUS"
       };
+
+      // Create a real SHA-256 hash for the eventId
+      const payloadString = JSON.stringify(payloadObj);
+      const hashBuffer = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(payloadString));
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = "0x" + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       
-      onScanComplete?.(payloadObj, base64Image);
-      // Let's reset the status back if not unmounted
-      setStatus("SCANNING");
-    }, 3000);
+      payloadObj.eventId = hashHex;
+      
+      setAnalysisResult({
+        species: speciesName,
+        confidence: confidence,
+        isBiomass: confidence > 0.5,
+        description: `Estimated Biomass Index: ${biomassEst}`,
+        payloadObj,
+        base64Image
+      });
+      setStatus("RESULT");
+      
+    } catch (err: any) {
+      console.error(err);
+      addLog(`ERR: AI Analysis Failed. ${err.message}`);
+      setTimeout(() => setStatus("SCANNING"), 3000);
+    }
   };
 
   const handleBroadcast = async () => {
@@ -219,39 +291,8 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
     setBroadcastPhase('ETCHING');
 
     // 1. Construct the Note Content
-    let pubkeyHex = "unknown";
-    try {
-      const nodeKey = localStorage.getItem('greenweave_nsec');
-      if (nodeKey) {
-        if (nodeKey.startsWith('nsec1')) {
-          const decoded = nip19.decode(nodeKey);
-          pubkeyHex = getPublicKey(decoded.data as Uint8Array);
-        } else {
-          pubkeyHex = getPublicKey(new Uint8Array(nodeKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
-        }
-      }
-    } catch (e) {
-      console.warn("Could not extract pubkey for payload", e);
-    }
-
-    const payloadObj = {
-      eventId: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
-      pubkey: pubkeyHex,
-      timestamp: Date.now(),
-      telemetry: {
-        species_hash: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
-        confidence_score: analysisResult.confidence,
-        biomass_volume_est: parseFloat((Math.random() * 10 + 2).toFixed(2)),
-        visual_spectral_hash: "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')
-      },
-      spatial_zkp: {
-        region_geohash_blurred: "w3g",
-        validity_proof: "0x04bf9a...[ZK-SNARK-MOCK]",
-      },
-      status: "PENDING_CONSENSUS"
-    };
-
-    const content = JSON.stringify(payloadObj, null, 2) + `\n\n${mediaUrl}`;
+    const payloadObj = analysisResult.payloadObj || {};
+    const content = JSON.stringify(payloadObj, null, 2) + (mediaUrl ? `\n\n${mediaUrl}` : "");
     
     const eventTemplate = {
       kind: 1,
@@ -320,10 +361,11 @@ export default function Scanner({ onAddLog, onClose, onScanComplete }: ScannerPr
         setIsProcessing(false);
         setBroadcastSuccess(true);
         setBroadcastPhase('IDLE');
-        // Success case - go back to scanning
+        // Success case - Auto route to feed
         setTimeout(() => {
+          onScanComplete?.(payloadObj, analysisResult.base64Image || "");
           handleRescan();
-        }, 4000);
+        }, 1500);
       } else {
         throw new Error("RELAY BROADCAST FAILED");
       }

@@ -13,10 +13,17 @@ export default function App() {
   const [npub, setNpub] = useState<string | null>(null);
   const [isIdentityConnected, setIsIdentityConnected] = useState(false);
   const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'DAO' | 'ME'>('SCAN');
-  const [usdgBalance, setUsdgBalance] = useState<number>(0.00);
-  const [daoTreasurySats, setDaoTreasurySats] = useState<number>(0);
+  const [usdgBalance, setUsdgBalance] = useState<number>(() => {
+    return Number(localStorage.getItem('usdgBalance')) || 0.00;
+  });
+  const [daoTreasurySats, setDaoTreasurySats] = useState<number>(() => {
+    return Number(localStorage.getItem('daoTreasurySats')) || 0;
+  });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [resolvedProposals, setResolvedProposals] = useState<string[]>([]);
+  const [resolvedProposals, setResolvedProposals] = useState<string[]>(() => {
+    const raw = localStorage.getItem('resolvedProposals');
+    return raw ? JSON.parse(raw) : [];
+  });
 
   const MACRO_RULES = {
     MAX_SUPPLY: 21000000,    // Mechanism 3: Absolute Hard Cap
@@ -24,11 +31,25 @@ export default function App() {
     BASE_REWARD: 50          // Initial reward per valid scan
   };
 
-  const [totalSupply, setTotalSupply] = useState(0); // Can go UP (Mint) or DOWN (Burn)
-  const [halvingClock, setHalvingClock] = useState(0); // Strictly goes UP (Total historical scans)
+  const [totalSupply, setTotalSupply] = useState(() => {
+    return Number(localStorage.getItem('totalSupply')) || 0;
+  }); // Can go UP (Mint) or DOWN (Burn)
+  const [halvingClock, setHalvingClock] = useState(() => {
+    return Number(localStorage.getItem('halvingClock')) || 0;
+  }); // Strictly goes UP (Total historical scans)
 
   const [localPosts, setLocalPosts] = useState<any[]>([]);
-  const [dynamicProposals, setDynamicProposals] = useState<any[]>([]);
+  const [dynamicProposals, setDynamicProposals] = useState<any[]>(() => {
+    const raw = localStorage.getItem('dynamicProposals');
+    return raw ? JSON.parse(raw) : [];
+  });
+
+  useEffect(() => { localStorage.setItem('usdgBalance', String(usdgBalance)); }, [usdgBalance]);
+  useEffect(() => { localStorage.setItem('daoTreasurySats', String(daoTreasurySats)); }, [daoTreasurySats]);
+  useEffect(() => { localStorage.setItem('resolvedProposals', JSON.stringify(resolvedProposals)); }, [resolvedProposals]);
+  useEffect(() => { localStorage.setItem('totalSupply', String(totalSupply)); }, [totalSupply]);
+  useEffect(() => { localStorage.setItem('halvingClock', String(halvingClock)); }, [halvingClock]);
+  useEffect(() => { localStorage.setItem('dynamicProposals', JSON.stringify(dynamicProposals)); }, [dynamicProposals]);
 
   // MECHANISM 2: ECOLOGICAL HALVING
   const calculateCurrentReward = (clockParams: number) => {

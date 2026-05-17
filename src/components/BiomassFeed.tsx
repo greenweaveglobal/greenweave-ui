@@ -59,20 +59,19 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
 
   useEffect(() => {
     let isMounted = true;
-    const fetchEvents = async () => {
-      const pool = new SimplePool();
-      const relays = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net'];
-      
-      try {
-        const events = await pool.querySync(relays, {
-          kinds: [1],
-          '#t': ['GreenWeave', 'BiomassProof', 'greenweave'],
-          limit: 20
-        });
-
+    const pool = new SimplePool();
+    const relays = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net'];
+    
+    const sub = pool.subscribeMany(relays, [
+      {
+        kinds: [1],
+        '#t': ['GreenWeave', 'BiomassProof', 'greenweave'],
+        limit: 50
+      }
+    ], {
+      onevent(event) {
         if (!isMounted) return;
-
-        const formattedPosts = events.map(event => ({
+        const newPost = {
           id: event.id,
           author: nip19.npubEncode(event.pubkey).substring(0, 10) + "...",
           pubkey: event.pubkey,
@@ -84,20 +83,18 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
           description: "",
           location: "",
           energyToll: 0
-        })).sort((a, b) => b.createdAt - a.createdAt);
-
-        setFeedPosts(formattedPosts);
-      } catch (err) {
-        console.error("Error fetching events:", err);
-      } finally {
-        pool.close(relays);
+        };
+        setFeedPosts(prev => {
+          if (prev.some(p => p.id === newPost.id)) return prev;
+          return [...prev, newPost].sort((a, b) => b.createdAt - a.createdAt);
+        });
       }
-    };
-
-    fetchEvents();
+    });
 
     return () => {
       isMounted = false;
+      sub.close();
+      pool.close(relays);
     };
   }, []);
 
