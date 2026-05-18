@@ -9,7 +9,7 @@ export const GENESIS_MANIFESTO = `
 --------------------------------------------------------------------
 1.1 ZERO PRE-MINE: 
 Total supply of 21,000,000 USDG is cryptographically locked inside 
-the DAO Treasury UTXO at Genesis. No team, advisor, or VC allocations.
+the Consensus Treasury UTXO at Genesis. No team, advisor, or VC allocations.
 
 1.2 PROOF-OF-BIOMASS IS ABSOLUTE: 
 The only vector to mint USDG into circulation is via physical on-chain 
@@ -17,7 +17,7 @@ biomass validation. This rule applies to everyone, including the Architect.
 
 1.3 GENESIS NODE (NODE 0) PRINCIPLE: 
 In the initial epochs, the Architect operates as Node 0 to bootstrap 
-network liquidity. All USDG rewards mined via actual biometric validation 
+network liquidity. All USDG rewards mined via actual biomass validation 
 during this phase belong strictly to Node 0 as early adopter risk reward.
 
 [ SECTION 02: CRYPTOGRAPHIC PARAMETERS ]
