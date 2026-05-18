@@ -3,9 +3,11 @@ import { useState } from "react";
 interface MarketDashboardProps {
   onSwap: (sats: number, usdg: number) => void;
   payInvoice?: (invoice: string) => Promise<any>;
+  daoTreasuryUsdg: number;
+  daoTreasurySats: number;
 }
 
-export default function MarketDashboard({ onSwap, payInvoice }: MarketDashboardProps) {
+export default function MarketDashboard({ onSwap, payInvoice, daoTreasuryUsdg, daoTreasurySats }: MarketDashboardProps) {
   const [usdgAmount, setUsdgAmount] = useState<string>('50');
   const [exchangeRate, setExchangeRate] = useState<string>('240');
   const [isSwapping, setIsSwapping] = useState(false);
@@ -42,6 +44,26 @@ export default function MarketDashboard({ onSwap, payInvoice }: MarketDashboardP
       </h1>
       <div className="text-[10px] tracking-[0.4em] font-bold mb-8 text-[#10B981]/80 uppercase">
         Circular Economy Exchange
+      </div>
+      
+      {/* Dual Treasury Reserves */}
+      <div className="w-full bg-black border border-[#10B981]/50 p-4 mb-6 shadow-[0_0_15px_rgba(16,185,129,0.1)] flex flex-col gap-3">
+        <div className="text-[9px] text-[#10B981] font-bold tracking-widest uppercase text-center border-b border-[#10B981]/20 pb-2">
+          DAO Liquidity Reserves
+        </div>
+        <div className="flex justify-between items-center bg-zinc-950 p-2">
+          <div className="flex flex-col text-left">
+             <span className="text-[8px] text-zinc-500 uppercase tracking-widest">Locked USDG</span>
+             <span className="text-[#10B981] font-black">{daoTreasuryUsdg.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div className="flex flex-col text-right">
+             <span className="text-[8px] text-zinc-500 uppercase tracking-widest">Reserve TSATS</span>
+             <span className="text-amber-500 font-black">⚡ {daoTreasurySats.toLocaleString()}</span>
+          </div>
+        </div>
+        <div className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest text-center mt-1">
+          [ ARCHITECT ADMIN KEYS: <span className="text-red-500">BURNED</span> ]
+        </div>
       </div>
 
       <div className="w-full space-y-8 text-left">
@@ -107,13 +129,35 @@ export default function MarketDashboard({ onSwap, payInvoice }: MarketDashboardP
               *WARNING: SWAPS ARE NON-CUSTODIAL. ENSURE YOUR LIGHTNING INVOICE AND RGB NODE ARE SYNCED.*
             </div>
 
-            <button
-              onClick={handleSwap}
-              disabled={isSwapping || isNaN(parseFloat(usdgAmount)) || parseFloat(usdgAmount) <= 0 || isNaN(parseFloat(exchangeRate)) || parseFloat(exchangeRate) <= 0}
-              className="w-full mt-2 py-4 border-2 border-[#10B981] text-[#10B981] font-black tracking-widest hover:bg-[#10B981] hover:text-black transition-all uppercase disabled:opacity-50 disabled:cursor-not-allowed bg-black"
-            >
-              {isSwapping ? "[ BROADCASTING INTENT... ]" : "[ INITIATE ATOMIC SWAP (HTLC) ]"}
-            </button>
+            <div className="flex flex-col gap-2 mt-2">
+              <button
+                onClick={handleSwap}
+                disabled={isSwapping || isNaN(parseFloat(usdgAmount)) || parseFloat(usdgAmount) <= 0 || isNaN(parseFloat(exchangeRate)) || parseFloat(exchangeRate) <= 0}
+                className="w-full py-4 border-2 border-[#10B981] text-[#10B981] font-black tracking-widest hover:bg-[#10B981] hover:text-black transition-all uppercase disabled:opacity-50 disabled:cursor-not-allowed bg-black"
+              >
+                {isSwapping ? "[ BROADCASTING INTENT... ]" : "[ INITIATE ATOMIC SWAP (HTLC) ]"}
+              </button>
+              <div className="flex justify-center">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigator.clipboard.writeText("lnbctestnet1placeholderinvoice99999");
+                    const btn = e.currentTarget;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = "[ COPIED! ]";
+                    btn.classList.add("text-[#10B981]");
+                    alert("[ORACLE] Testnet Invoice copied to clipboard. Paste this into Mutiny Wallet or an Alby Testnet environment.");
+                    setTimeout(() => {
+                      btn.innerHTML = originalText;
+                      btn.classList.remove("text-[#10B981]");
+                    }, 2000);
+                  }}
+                  className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest hover:text-white transition-colors"
+                >
+                  [ COPY TESTNET INVOICE ]
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

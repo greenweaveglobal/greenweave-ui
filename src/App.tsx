@@ -19,6 +19,10 @@ export default function App() {
   const [usdgBalance, setUsdgBalance] = useState<number>(() => {
     return Number(localStorage.getItem('usdgBalance')) || 0.00;
   });
+  const [daoTreasuryUsdg, setDaoTreasuryUsdg] = useState<number>(() => {
+    const stored = localStorage.getItem('daoTreasuryUsdg');
+    return stored ? Number(stored) : 21000000.00;
+  });
   const [daoTreasurySats, setDaoTreasurySats] = useState<number>(() => {
     return Number(localStorage.getItem('daoTreasurySats')) || 0;
   });
@@ -70,6 +74,7 @@ export default function App() {
   }, [pubkey]);
 
   useEffect(() => { localStorage.setItem('usdgBalance', String(usdgBalance)); }, [usdgBalance]);
+  useEffect(() => { localStorage.setItem('daoTreasuryUsdg', String(daoTreasuryUsdg)); }, [daoTreasuryUsdg]);
   useEffect(() => { localStorage.setItem('daoTreasurySats', String(daoTreasurySats)); }, [daoTreasurySats]);
   useEffect(() => { localStorage.setItem('resolvedProposals', JSON.stringify(resolvedProposals)); }, [resolvedProposals]);
   useEffect(() => { localStorage.setItem('totalSupply', String(totalSupply)); }, [totalSupply]);
@@ -253,9 +258,12 @@ export default function App() {
         {activeTab === 'MARKET' && (
           <MarketDashboard 
             payInvoice={payInvoice}
+            daoTreasuryUsdg={daoTreasuryUsdg}
+            daoTreasurySats={daoTreasurySats}
             onSwap={(sats, usdg) => {
             setDaoTreasurySats(prev => prev + sats);
             setUsdgBalance(prev => prev + usdg);
+            setDaoTreasuryUsdg(prev => prev - usdg);
             setToastMessage(`[ SWAP SUCCESS: +${usdg.toFixed(2)} USDG | +${sats} SATS TO TREASURY ]`);
             setTimeout(() => setToastMessage(null), 3000);
           }} />
@@ -266,6 +274,7 @@ export default function App() {
             payInvoice={payInvoice}
             npub={npub} 
             resolvedProposals={resolvedProposals} 
+            daoTreasuryUsdg={daoTreasuryUsdg}
             daoTreasurySats={daoTreasurySats} 
             usdgBalance={usdgBalance}
             totalSupply={totalSupply}
@@ -281,8 +290,9 @@ export default function App() {
                   const reward = executeMint();
                   if (reward > 0) {
                     setUsdgBalance(prev => prev + reward);
+                    setDaoTreasuryUsdg(prev => prev - reward);
                     setResolvedProposals(prev => [...prev, propId]);
-                    setToastMessage(`[ CONSENSUS REACHED. ${reward.toFixed(2)} USDG MINTED. ]`);
+                    setToastMessage(`[ CONSENSUS REACHED. ${reward.toFixed(2)} USDG ISSUED FROM TREASURY. ]`);
                     setTimeout(() => setToastMessage(null), 3000);
                   } else {
                     setToastMessage("[ ERROR: HARD CAP REACHED. CANNOT MINT. ]");
@@ -310,14 +320,16 @@ export default function App() {
             }}
             onDeployProposal={(cost) => {
               setUsdgBalance(prev => prev - cost);
+              setDaoTreasuryUsdg(prev => prev + cost);
             }}
             onBurnNode={(propId, burnAmount) => {
               if (!resolvedProposals.includes(propId)) {
                 executeBurn(burnAmount);
-                // Deduct from the user's local balance as mock "target"
+                // Slashing returns the stake to the Network Treasury
                 setUsdgBalance(prev => Math.max(0, prev - burnAmount));
+                setDaoTreasuryUsdg(prev => prev + burnAmount);
                 setResolvedProposals(prev => [...prev, propId]);
-                setToastMessage(`[ CONSENSUS REACHED. ${burnAmount} USDG SLASHED FROM MALICIOUS NODE AND BURNED. ]`);
+                setToastMessage(`[ CONSENSUS REACHED. ${burnAmount} USDG SLASHED INTO NETWORK TREASURY. ]`);
                 setTimeout(() => setToastMessage(null), 3000);
               }
             }}

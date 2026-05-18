@@ -170,16 +170,39 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
                 </div>
               )}
               <div className="text-xs text-white font-mono whitespace-pre-wrap mb-4 overflow-x-auto p-2 bg-black/50 border border-zinc-800 rounded">{item.content}</div>
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleZap();
-                }}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded uppercase tracking-widest flex items-center justify-center gap-2 mt-4 transition-colors"
-              >
-                <Zap size={18} fill="currentColor" />
-                [ ⚡ ZAP SATS ]
-              </button>
+              <div className="flex flex-col gap-2 mt-4">
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleZap();
+                  }}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Zap size={18} fill="currentColor" />
+                  [ ⚡ ZAP SATS ]
+                </button>
+                <div className="flex justify-center">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigator.clipboard.writeText("lnbctestnet1placeholderinvoice99999");
+                      const btn = e.currentTarget;
+                      const originalText = btn.innerHTML;
+                      btn.innerHTML = "[ COPIED! ]";
+                      btn.classList.add("text-[#10B981]");
+                      alert("[ORACLE] Testnet Invoice copied to clipboard. Paste this into Mutiny Wallet or an Alby Testnet environment.");
+                      setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove("text-[#10B981]");
+                      }, 2000);
+                    }}
+                    className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest hover:text-white transition-colors"
+                  >
+                    [ COPY TESTNET INVOICE ]
+                  </button>
+                </div>
+              </div>
               {payloadObj && payloadObj.telemetry && (
                 <button
                   onClick={(e) => {

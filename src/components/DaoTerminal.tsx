@@ -8,6 +8,7 @@ interface DaoTerminalProps {
   onBurnNode?: (propId: string, burnAmount: number) => void;
   npub?: string | null;
   resolvedProposals: string[];
+  daoTreasuryUsdg: number;
   daoTreasurySats: number;
   usdgBalance: number;
   totalSupply: number;
@@ -16,7 +17,7 @@ interface DaoTerminalProps {
   payInvoice?: (invoice: string) => Promise<any>;
 }
 
-export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployProposal, onBurnNode, npub, resolvedProposals, daoTreasurySats, usdgBalance, totalSupply, halvingClock, dynamicProposals = [], payInvoice }: DaoTerminalProps) {
+export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployProposal, onBurnNode, npub, resolvedProposals, daoTreasuryUsdg, daoTreasurySats, usdgBalance, totalSupply, halvingClock, dynamicProposals = [], payInvoice }: DaoTerminalProps) {
   const isProp881Resolved = resolvedProposals.includes("prop-881");
   const isProp882Resolved = resolvedProposals.includes("prop-882");
   const isProp883Resolved = resolvedProposals.includes("prop-883");
@@ -77,6 +78,30 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
     }
   };
 
+  const CopyInvoiceButton = () => (
+    <div className="flex justify-center mt-2">
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          navigator.clipboard.writeText("lnbctestnet1placeholderinvoice99999");
+          const btn = e.currentTarget;
+          const originalText = btn.innerHTML;
+          btn.innerHTML = "[ COPIED! ]";
+          btn.classList.add("text-[#10B981]");
+          alert("[ORACLE] Testnet Invoice copied to clipboard. Paste this into Mutiny Wallet or an Alby Testnet environment.");
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove("text-[#10B981]");
+          }, 2000);
+        }}
+        className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest hover:text-white transition-colors"
+      >
+        [ COPY TESTNET INVOICE ]
+      </button>
+    </div>
+  );
+
   return (
     <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in duration-500 h-full overflow-y-auto pb-32 scrollbar-none">
       <h1 className="text-2xl font-black tracking-[0.25em] mb-2 text-[#39FF14] uppercase w-full border-b-2 border-[#39FF14]/30 pb-4">
@@ -87,16 +112,26 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
       </div>
 
       {/* Network Treasury & Engine Metrics */}
-      <div className="w-full bg-zinc-950 border-2 border-amber-500/50 p-4 mb-6 text-center font-mono shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-        <div className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-1">
-          Network Treasury
+      <div className="w-full bg-zinc-950 border-2 border-[#10B981]/50 p-4 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)] flex flex-col gap-3">
+        <div className="text-[10px] text-[#10B981] font-bold tracking-widest uppercase text-center border-b border-[#10B981]/20 pb-2">
+          TREASURY: FEDERATED MULTI-SIG (NIP-47 SECURED)
         </div>
-        <div className="text-xl font-black text-amber-400 mb-4">
-          ⚡ {daoTreasurySats.toLocaleString()} SATS
+        <div className="flex justify-between items-center bg-black p-2 mt-2">
+          <div className="flex flex-col text-left">
+             <span className="text-[8px] text-zinc-500 uppercase tracking-widest">Locked USDG</span>
+             <span className="text-[#10B981] font-black text-lg">{daoTreasuryUsdg.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div className="flex flex-col text-right">
+             <span className="text-[8px] text-zinc-500 uppercase tracking-widest">Network TSATS</span>
+             <span className="text-amber-500 font-black text-lg">⚡ {daoTreasurySats.toLocaleString()}</span>
+          </div>
+        </div>
+        <div className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest text-center mt-1">
+          [ ARCHITECT ADMIN KEYS: <span className="text-red-500">BURNED</span> ]
         </div>
         
         {/* Tokenomics Engine Sub-Panel */}
-        <div className="border-t border-amber-500/20 pt-3 flex flex-col gap-2 text-left">
+        <div className="border-t border-[#10B981]/20 pt-3 mt-1 flex flex-col gap-2 text-left">
            <div className="text-[10px] text-zinc-500 tracking-widest uppercase text-center mb-1">Engine Metrics</div>
            <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest">
              <span className="text-zinc-400">Total Supply:</span>
@@ -166,7 +201,8 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
           >
             [ + DEPLOY PROPOSAL (-20 USDG STAKE / 500 TSATS) ]
           </button>
-          <div className="text-[8px] text-zinc-500 text-center uppercase tracking-widest">
+          <CopyInvoiceButton />
+          <div className="text-[8px] text-zinc-500 text-center uppercase tracking-widest mt-2">
             *Warning: Rejected proposals will result in 100% slashing of the 20 USDG stake to the Network Treasury.*
           </div>
         </div>
@@ -233,6 +269,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                      <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
                        REJECT (STAKE 5 USDG / 100 TSATS)
                      </button>
+                     <CopyInvoiceButton />
                      <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
                        *Warning: Malicious voting will result in 100% slashing of staked assets.*
                      </div>
@@ -297,6 +334,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                  <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
                    REJECT (STAKE 5 USDG / 100 TSATS)
                  </button>
+                 <CopyInvoiceButton />
                  <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
                    *Warning: Malicious voting will result in 100% slashing of staked assets.*
                  </div>
@@ -360,6 +398,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                  <button className="w-full border-2 border-zinc-500/50 text-zinc-500 font-black text-[10px] tracking-widest py-3 hover:bg-zinc-500 hover:text-black transition-colors uppercase">
                    REJECT SLASHING
                  </button>
+                 <CopyInvoiceButton />
                </div>
              </div>
            ) : (
@@ -418,6 +457,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                  <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
                    REJECT (STAKE 5 USDG / 100 TSATS)
                  </button>
+                 <CopyInvoiceButton />
                  <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
                    *Warning: Malicious voting will result in 100% slashing of staked assets.*
                  </div>
