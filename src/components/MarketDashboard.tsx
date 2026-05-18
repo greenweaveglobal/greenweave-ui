@@ -2,37 +2,39 @@ import { useState } from "react";
 
 interface MarketDashboardProps {
   onSwap: (sats: number, usdg: number) => void;
-  payInvoice?: (invoice: string) => Promise<any>;
+  payInvoice?: (invoice: string, amount?: number) => Promise<any>;
   daoTreasuryUsdg: number;
   daoTreasurySats: number;
 }
 
 export default function MarketDashboard({ onSwap, payInvoice, daoTreasuryUsdg, daoTreasurySats }: MarketDashboardProps) {
-  const [usdgAmount, setUsdgAmount] = useState<string>('50');
+  const [usdgAmount, setUsdgAmount] = useState<string>('12000');
   const [exchangeRate, setExchangeRate] = useState<string>('240');
   const [isSwapping, setIsSwapping] = useState(false);
 
   const handleSwap = async () => {
-    const amount = parseFloat(usdgAmount);
+    const satsToSpend = parseFloat(usdgAmount); // usdgAmount state var is now repurposed to hold TSATS
     const rate = parseFloat(exchangeRate);
-    if (isNaN(amount) || amount <= 0 || isNaN(rate) || rate <= 0) return;
+    if (isNaN(satsToSpend) || satsToSpend <= 0 || isNaN(rate) || rate <= 0) return;
     
     setIsSwapping(true);
     
     try {
       if (payInvoice) {
-        await payInvoice("lnbctestnet1placeholderinvoice99999");
+        // Mock swap
+        await payInvoice("lnbctestnet1placeholderinvoice99999", satsToSpend);
       }
     } catch (err) {
       console.warn("Lightning payment failed / aborted", err);
-      // We will still proceed for the demo, or we can abort. Let's just catch and ignore to let the demo work.
+      setIsSwapping(false);
+      return;
     }
 
     setTimeout(() => {
-      // Simulate selling USDG to receive SATS
-      onSwap(amount * rate, amount);
+      // Pass (sats spent, usdg received)
+      onSwap(satsToSpend, satsToSpend / rate);
       setIsSwapping(false);
-      setUsdgAmount('50');
+      setUsdgAmount('12000');
       setExchangeRate('240');
     }, 1500);
   };
@@ -97,14 +99,14 @@ export default function MarketDashboard({ onSwap, payInvoice, daoTreasuryUsdg, d
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                AMOUNT (USDG)
+                SPEND AMOUNT (TSATS)
               </label>
               <input
                 type="number"
                 value={usdgAmount}
                 onChange={(e) => setUsdgAmount(e.target.value)}
                 className="w-full bg-zinc-950 border border-[#10B981]/30 p-3 text-white font-mono text-center focus:outline-none focus:border-[#10B981] transition-colors"
-                placeholder="50"
+                placeholder="10000"
               />
             </div>
             
@@ -122,7 +124,7 @@ export default function MarketDashboard({ onSwap, payInvoice, daoTreasuryUsdg, d
             </div>
 
             <div className="text-center font-bold text-xs uppercase tracking-widest border border-zinc-800 bg-zinc-900 p-2 text-white">
-               RECEIVE: <span className="text-[#10B981]">{((parseFloat(usdgAmount)||0)*(parseFloat(exchangeRate)||0)).toLocaleString()} SATS</span>
+               RECEIVE: <span className="text-[#10B981]">{((parseFloat(usdgAmount)||0) / (parseFloat(exchangeRate)||1)).toLocaleString(undefined, {maximumFractionDigits: 2})} USDG</span>
             </div>
 
             <div className="text-red-500 text-[8px] sm:text-[9px] font-bold italic tracking-wide text-center uppercase mt-1">

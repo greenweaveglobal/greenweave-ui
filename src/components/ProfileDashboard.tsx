@@ -7,10 +7,15 @@ interface ProfileDashboardProps {
   pubkey: string | null;
   npub: string | null;
   usdgBalance: number;
+  setUsdgBalance: (val: number | ((prev: number) => number)) => void;
   nodeConnectionStatus: 'SYNCING' | 'CONNECTED';
   isLightningConnected: boolean;
+  isSandbox?: boolean;
+  tsatsBalance?: number;
+  setTsatsBalance?: (val: number | ((prev: number) => number)) => void;
   onConnect: () => void;
   onLogout: () => void;
+  setToastMessage: (msg: string | null) => void;
 }
 
 export default function ProfileDashboard({ 
@@ -18,10 +23,15 @@ export default function ProfileDashboard({
   pubkey, 
   npub, 
   usdgBalance,
+  setUsdgBalance,
   nodeConnectionStatus,
   isLightningConnected,
+  isSandbox,
+  tsatsBalance,
+  setTsatsBalance,
   onConnect, 
-  onLogout 
+  onLogout,
+  setToastMessage
 }: ProfileDashboardProps) {
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -30,7 +40,7 @@ export default function ProfileDashboard({
   const [hasNodeKey, setHasNodeKey] = useState(false);
   const [profile, setProfile] = useState<{ name?: string, display_name?: string, picture?: string } | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [localToastMessage, setLocalToastMessage] = useState<string | null>(null);
 
   const fetchProfileData = async () => {
     if (!isIdentityConnected) return;
@@ -187,6 +197,37 @@ export default function ProfileDashboard({
         <span className="text-[10px] text-[#39FF14] animate-pulse">● ACTIVE</span>
       </div>
       
+      {/* Faucet for Sandbox Mode */}
+      {isSandbox && (
+        <div className="w-full bg-[#F59E0B]/10 border-2 border-[#F59E0B]/50 p-4 mb-8 flex flex-col gap-3 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+          <div className="text-[10px] text-[#F59E0B] font-black uppercase tracking-widest text-center border-b border-[#F59E0B]/30 pb-2">
+            [ GENESIS FAUCET (SANDBOX MODE) ]
+          </div>
+          <div className="flex gap-2 w-full mt-2">
+            <button 
+              onClick={() => {
+                 setTsatsBalance?.(prev => prev + 20000);
+                 setToastMessage("[ FAUCET ] Mock TSATS claimed successfully.");
+                 setTimeout(() => setToastMessage(null), 3000);
+              }}
+              className="flex-1 py-3 text-[9px] bg-black border border-[#F59E0B] text-[#F59E0B] font-black uppercase tracking-wide hover:bg-[#F59E0B] hover:text-black transition-colors"
+            >
+              [ CLAIM MOCK TSATS ]
+            </button>
+            <button 
+              onClick={() => {
+                 setUsdgBalance?.(prev => prev + 100);
+                 setToastMessage("[ FAUCET ] Mock TUSDG minted directly to local RGB state.");
+                 setTimeout(() => setToastMessage(null), 3000);
+              }}
+              className="flex-1 py-3 text-[9px] bg-black border border-[#10B981] text-[#10B981] font-black uppercase tracking-wide hover:bg-[#10B981] hover:text-black transition-colors"
+            >
+              [ CLAIM MOCK TUSDG ]
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Identity Card */}
       <div className="w-full flex flex-col items-center justify-center p-6 border border-[#39FF14]/50 rounded-lg bg-black/40 min-h-[140px] gap-3 mb-8 shadow-[0_0_20px_rgba(57,255,20,0.1)] relative">
         {profile?.picture ? (
@@ -330,6 +371,14 @@ export default function ProfileDashboard({
                )}
              </div>
            </div>
+           {isSandbox && (
+            <div className="flex justify-between items-end mt-4 pt-4 border-t border-[#10B981]/20">
+              <span className="text-3xl font-black text-white tracking-wider">{(tsatsBalance || 0).toLocaleString()}</span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-lg font-bold text-amber-500 tracking-widest flex items-center gap-2">TSATS <span className="text-[10px] bg-amber-500 text-black px-1 py-0.5 font-bold">[ TESTNET ]</span></span>
+              </div>
+            </div>
+           )}
            <button 
              onClick={() => navigator.clipboard.writeText("rgb:5UQmHEzz-yutdi3a-9KTHgD5-S6Lut5A-0M9DaPQ-X~PHblA")}
              className="text-[10px] text-zinc-500 font-mono mt-2 tracking-widest uppercase text-left hover:text-[#10B981] transition-colors flex items-center gap-2 group w-fit"
@@ -357,17 +406,17 @@ export default function ProfileDashboard({
 
       {/* Zap Button */}
       <div className="w-full mb-10 relative">
-        {toastMessage && (
+        {localToastMessage && (
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-2 font-bold uppercase tracking-widest text-[10px] z-50 rounded shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-in slide-in-from-bottom-2">
-            {toastMessage}
+            {localToastMessage}
           </div>
         )}
         <button 
           onClick={() => {
-            setToastMessage("INITIATING LIGHTNING LINK...");
+            setLocalToastMessage("INITIATING LIGHTNING LINK...");
             setTimeout(() => {
               window.location.href = "lightning:playfulwaterfall533492@getalby.com";
-              setTimeout(() => setToastMessage(null), 2000);
+              setTimeout(() => setLocalToastMessage(null), 2000);
             }, 800);
           }}
           className="w-full py-5 bg-yellow-500 text-black font-black text-sm uppercase tracking-[0.25em] transition-all active:scale-95 shadow-[0_0_20px_rgba(234,179,8,0.3)] flex items-center justify-center gap-3 border-2 border-yellow-400 group"

@@ -16,7 +16,7 @@ export default function App() {
   const [isIdentityConnected, setIsIdentityConnected] = useState(false);
   const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'CONSENSUS SPACE' | 'DOCS' | 'ME'>('SCAN');
   
-  const { isConnected: isLightningConnected, payInvoice } = useWebLN();
+  const { isConnected: isLightningConnected, payInvoice, isSandbox, tsatsBalance, setTsatsBalance } = useWebLN();
   const [usdgBalance, setUsdgBalance] = useState<number>(() => {
     return Number(localStorage.getItem('usdgBalance')) || 0.00;
   });
@@ -205,12 +205,17 @@ export default function App() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-black to-black opacity-50 pointer-events-none" />
 
       {/* Network Status tag */}
-      {
-// @ts-ignore        
+      {isSandbox ? (
+        <div className="absolute top-2 right-4 z-40 text-[10px] text-[#F59E0B] font-black uppercase tracking-widest hidden sm:block shadow-[0_0_15px_rgba(245,158,11,0.5)] bg-black/80 px-2 py-1 border border-[#F59E0B]/50">
+          [ ENVIRONMENT: SANDBOX TESTNET MODE ]
+        </div>
+      ) : (
+        // @ts-ignore        
         import.meta.env.DEV && (
         <div className="absolute top-2 right-4 z-40 text-[10px] text-amber-500 font-bold uppercase tracking-widest hidden sm:block">
-          [ NETWORK: RGB_SIMULATOR (LOCAL_NODE) ]
+           [ NETWORK: RGB_SIMULATOR (LOCAL_NODE) ]
         </div>
+        )
       )}
 
       {/* Global Toast */}
@@ -262,12 +267,27 @@ export default function App() {
             daoTreasuryUsdg={daoTreasuryUsdg}
             daoTreasurySats={daoTreasurySats}
             onSwap={(sats, usdg) => {
-            setDaoTreasurySats(prev => prev + sats);
-            setUsdgBalance(prev => prev + usdg);
-            setDaoTreasuryUsdg(prev => prev - usdg);
-            setToastMessage(`[ SWAP SUCCESS: +${usdg.toFixed(2)} USDG | +${sats} SATS TO TREASURY ]`);
-            setTimeout(() => setToastMessage(null), 3000);
-          }} />
+              if (isSandbox) {
+                if (tsatsBalance < sats) {
+                  setToastMessage("[ ERROR: INSUFFICIENT TSATS FOR MOCK SWAP ]");
+                  setTimeout(() => setToastMessage(null), 3000);
+                  return;
+                }
+                setTsatsBalance(prev => prev - sats);
+                setUsdgBalance(prev => prev + usdg);
+                setDaoTreasuryUsdg(prev => prev - usdg);
+                setDaoTreasurySats(prev => prev + sats);
+                setToastMessage(`[ SWAP SUCCESS: -${sats} TSATS | +${usdg.toFixed(2)} USDG ]`);
+                setTimeout(() => setToastMessage(null), 3000);
+              } else {
+                setDaoTreasurySats(prev => prev + sats);
+                setUsdgBalance(prev => prev + usdg);
+                setDaoTreasuryUsdg(prev => prev - usdg);
+                setToastMessage(`[ SWAP SUCCESS: +${usdg.toFixed(2)} USDG | +${sats} SATS TO TREASURY ]`);
+                setTimeout(() => setToastMessage(null), 3000);
+              }
+            }} 
+          />
         )}
 
         {activeTab === 'CONSENSUS SPACE' && (
@@ -360,10 +380,15 @@ export default function App() {
             pubkey={pubkey}
             npub={npub}
             usdgBalance={usdgBalance}
+            setUsdgBalance={setUsdgBalance}
             nodeConnectionStatus={nodeConnectionStatus}
             isLightningConnected={isLightningConnected}
+            isSandbox={isSandbox}
+            tsatsBalance={tsatsBalance}
+            setTsatsBalance={setTsatsBalance}
             onConnect={handleConnect}
             onLogout={handleLogout}
+            setToastMessage={setToastMessage}
           />
         )}
       </main>
