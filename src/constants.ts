@@ -1,1 +1,1 @@
-export const CREATOR_LN_ADDRESS = "greenweave@getalby.com"; // Example address
+export const CREATOR_LN_ADDRESS = "playfulwaterfall533492@getalby.com";

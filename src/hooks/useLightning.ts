@@ -4,7 +4,7 @@ export function useLightning() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const zap = useCallback(async (amount: number, address: string = "greenweave@getalby.com") => {
+  const zap = useCallback(async (amount: number, address: string = "playfulwaterfall533492@getalby.com") => {
     setLoading(true);
     setError(null);
     try {
