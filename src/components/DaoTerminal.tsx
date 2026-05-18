@@ -105,7 +105,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
   return (
     <div className="flex flex-col items-center w-full max-w-sm px-6 text-center animate-in fade-in duration-500 h-full overflow-y-auto pb-32 scrollbar-none">
       <h1 className="text-2xl font-black tracking-[0.25em] mb-2 text-[#39FF14] uppercase w-full border-b-2 border-[#39FF14]/30 pb-4">
-        DAO CONSENSUS
+        CONSENSUS SPACE
       </h1>
       <div className="text-[10px] tracking-[0.4em] font-bold mb-6 text-[#39FF14]/80 uppercase">
         Network Governance
@@ -114,7 +114,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
       {/* Network Treasury & Engine Metrics */}
       <div className="w-full bg-zinc-950 border-2 border-[#10B981]/50 p-4 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)] flex flex-col gap-3">
         <div className="text-[10px] text-[#10B981] font-bold tracking-widest uppercase text-center border-b border-[#10B981]/20 pb-2">
-          TREASURY: FEDERATED MULTI-SIG (NIP-47 SECURED)
+          CONSENSUS TREASURY: FEDERATED MULTI-SIG (NIP-47 SECURED)
         </div>
         <div className="flex justify-between items-center bg-black p-2 mt-2">
           <div className="flex flex-col text-left">
@@ -203,7 +203,7 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
           </button>
           <CopyInvoiceButton />
           <div className="text-[8px] text-zinc-500 text-center uppercase tracking-widest mt-2">
-            *Warning: Rejected proposals will result in 100% slashing of the 20 USDG stake to the Network Treasury.*
+            *Warning: Invalidated proposals will result in 100% slashing of the 20 USDG stake to the Network Treasury.*
           </div>
         </div>
       </div>
@@ -264,10 +264,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                        }}
                        className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
                      >
-                       APPROVE (STAKE 5 USDG / 100 TSATS)
+                       ATTEST (STAKE 5 USDG / 100 TSATS)
                      </button>
                      <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                       REJECT (STAKE 5 USDG / 100 TSATS)
+                       INVALIDATE (STAKE 5 USDG / 100 TSATS)
                      </button>
                      <CopyInvoiceButton />
                      <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
@@ -329,10 +329,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                    onClick={handleApproveProp881}
                    className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
                  >
-                   APPROVE (STAKE 5 USDG / 100 TSATS)
+                   ATTEST (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                   REJECT (STAKE 5 USDG / 100 TSATS)
+                   INVALIDATE (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <CopyInvoiceButton />
                  <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">
@@ -393,10 +393,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                    onClick={handleApproveProp882}
                    className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase"
                  >
-                   APPROVE SLASHING
+                   ATTEST SLASHING
                  </button>
                  <button className="w-full border-2 border-zinc-500/50 text-zinc-500 font-black text-[10px] tracking-widest py-3 hover:bg-zinc-500 hover:text-black transition-colors uppercase">
-                   REJECT SLASHING
+                   INVALIDATE SLASHING
                  </button>
                  <CopyInvoiceButton />
                </div>
@@ -452,10 +452,10 @@ export default function DaoTerminal({ onMintUSDG, onSpendTreasury, onDeployPropo
                    onClick={handleApproveProp883}
                    className="w-full border-2 border-[#39FF14]/50 text-[#39FF14] font-black text-[10px] tracking-widest py-3 hover:bg-[#39FF14] hover:text-black transition-colors uppercase"
                  >
-                   APPROVE (STAKE 5 USDG / 100 TSATS)
+                   ATTEST (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <button className="w-full border-2 border-red-500/50 text-red-500 font-black text-[10px] tracking-widest py-3 hover:bg-red-500 hover:text-black transition-colors uppercase">
-                   REJECT (STAKE 5 USDG / 100 TSATS)
+                   INVALIDATE (STAKE 5 USDG / 100 TSATS)
                  </button>
                  <CopyInvoiceButton />
                  <div className="text-[8px] text-zinc-600 text-center mt-1 uppercase">

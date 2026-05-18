@@ -231,7 +231,7 @@ export default function BiomassFeed({ localPosts = [], submittedEventIds = [], o
                       : "border-green-500 text-green-500 hover:bg-green-500/20"
                   }`}
                 >
-                  {isSubmitted ? "[ PENDING DAO VERIFICATION ]" : "[ SUBMIT TO DAO CONSENSUS ]"}
+                  {isSubmitted ? "[ PENDING NETWORK CONSENSUS ]" : "[ SUBMIT TO CONSENSUS SPACE ]"}
                 </button>
               )}
             </div>
