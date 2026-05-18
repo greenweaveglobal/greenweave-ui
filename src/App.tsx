@@ -4,6 +4,7 @@ import ProfileDashboard from "./components/ProfileDashboard";
 import BiomassFeed from "./components/BiomassFeed";
 import MarketDashboard from "./components/MarketDashboard";
 import DaoTerminal from "./components/DaoTerminal";
+import TerminalDocs from "./components/TerminalDocs";
 import { nip19, getPublicKey } from "nostr-tools";
 import { useWebLN } from "./hooks/useWebLN";
 
@@ -13,7 +14,7 @@ export default function App() {
   const [pubkey, setPubkey] = useState<string | null>(null);
   const [npub, setNpub] = useState<string | null>(null);
   const [isIdentityConnected, setIsIdentityConnected] = useState(false);
-  const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'DAO' | 'ME'>('SCAN');
+  const [activeTab, setActiveTab] = useState<'SCAN' | 'FEED' | 'MARKET' | 'DAO' | 'DOCS' | 'ME'>('SCAN');
   
   const { isConnected: isLightningConnected, payInvoice } = useWebLN();
   const [usdgBalance, setUsdgBalance] = useState<number>(() => {
@@ -349,6 +350,10 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'DOCS' && (
+          <TerminalDocs />
+        )}
+
         {activeTab === 'ME' && (
           <ProfileDashboard 
             isIdentityConnected={isIdentityConnected}
@@ -366,7 +371,7 @@ export default function App() {
       {/* Persistence Interface (Fixed Navigation) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-8 pt-4 bg-gradient-to-t from-black via-black to-transparent">
         <div className="max-w-md mx-auto flex justify-around items-center bg-zinc-900 border-2 border-amber-500/40 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden">
-          {(['SCAN', 'FEED', 'MARKET', 'DAO', 'ME'] as const).map(tab => (
+          {(['SCAN', 'FEED', 'MARKET', 'DAO', 'DOCS', 'ME'] as const).map(tab => (
             <button 
               key={tab} 
               onClick={() => setActiveTab(tab)}
